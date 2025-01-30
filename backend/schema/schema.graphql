@@ -1,0 +1,31 @@
+type Mutation {
+  createUser(input: UserInput!): User
+  login(email: String!, password: String!): User
+}
+
+input UserInput {
+  username: String!
+  email: String!
+  password: String!
+  languageLevel: String
+}
+
+type User {
+  id: ID!
+  username: String!
+  email: String!
+  languageLevel: String
+  progress: Progress!
+  createdAt: String!
+}
+
+type Progress {
+  reading: Int
+  writing: Int
+  listening: Int
+  speaking: Int
+}
+
+type Query {
+  users: [User]
+}

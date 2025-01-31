@@ -16,7 +16,7 @@ const Navbar = () => {
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container-fluid">
         <Link className="navbar-brand" to="/">
-        <img src="../Logo.png" width={100} alt="Company Logo" className="custom-logo"/>
+          <img src="../Logo.png" width={100} alt="Company Logo" className="custom-logo ms-3"/>
         </Link>
         <button
           className="navbar-toggler"
@@ -30,25 +30,25 @@ const Navbar = () => {
           <span className="navbar-toggler-icon"></span>
         </button>
         <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto">
+          <ul className="navbar-nav ms-auto ml-3 me-4">
             {isAuthenticated ? (
               <>
-                <li className="nav-item">
+                <li className="nav-item mx-3">
                   <Link className="nav-link" to="/dashboard">
                     Dashboard
                   </Link>
                 </li>
-                <li className="nav-item">
+                <li className="nav-item mx-3">
                   <Link className="nav-link" to="/readingmock">
-                    Reading Test
+                    Reading
                   </Link>
                 </li>
-                <li className="nav-item">
+                <li className="nav-item mx-3">
                   <Link className="nav-link" to="/writingmock">
-                    Writing Test
+                    Writing
                   </Link>
                 </li>
-                <li className="nav-item">
+                <li className="nav-item mx-3">
                   <button className="btn btn-link nav-link" onClick={handleLogout}>
                     Logout
                   </button>
@@ -56,12 +56,17 @@ const Navbar = () => {
               </>
             ) : (
               <>
-                <li className="nav-item">
+                <li className="nav-item mx-2">
+                  <Link className="nav-link" to="/">
+                    Home
+                  </Link>
+                </li>
+                <li className="nav-item mx-2">
                   <Link className="nav-link" to="/register">
                     Register
                   </Link>
                 </li>
-                <li className="nav-item">
+                <li className="nav-item mx-2">
                   <Link className="nav-link" to="/login">
                     Login
                   </Link>

@@ -43,7 +43,14 @@ const Register = () => {
       // Username format validation: only letters, numbers, and underscores
       if (!/^\w+$/.test(formData.username)) {
         newErrors.username = "Username can only contain letters, numbers, and underscores, without spaces.";
-      } 
+      }
+      // Username must contain atleast one character and length at least 5
+      if (!/[a-zA-Z]/.test(formData.username)) {
+        newErrors.username = "Username must contain at least one letter.";
+      }
+      if (formData.username.length < 5) {
+        newErrors.username = "Username must be at least 5 characters long.";
+      }
     }
 
     // Email validation

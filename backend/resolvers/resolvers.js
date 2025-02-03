@@ -1,6 +1,7 @@
 // resolvers.js
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const TCFReading = require("../models/TCFReading");
 
 const resolvers = {
   Query: {
@@ -11,6 +12,16 @@ const resolvers = {
       } catch (error) {
         console.error("Error fetching users:", error);
         throw new Error("Failed to fetch users");
+      }
+    },
+
+    // Fetch all TCF readings (all exams)
+    tcfReadings: async () => {
+      try {
+        return await TCFReading.find();
+      } catch (error) {
+        console.error("Error fetching all TCF readings:", error);
+        throw new Error("Failed to fetch TCF readings");
       }
     },
   },

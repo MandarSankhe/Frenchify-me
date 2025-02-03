@@ -26,6 +26,33 @@ type Progress {
   speaking: Int
 }
 
+# Simplified TCFReading type
+type TCFReading {
+  id: ID!
+  title: String!
+  documents: [DocumentSet!]!
+  level: String!
+  createdAt: String!
+}
+
+type DocumentSet {
+  document: Document!
+  questions: [Question!]!
+}
+
+type Document {
+  title: String!
+  type: String!
+  content: String!
+}
+
+type Question {
+  questionText: String!
+  options: [String!]!
+  correctAnswer: String!
+}
+
 type Query {
   users: [User]
+  tcfReadings: [TCFReading]
 }

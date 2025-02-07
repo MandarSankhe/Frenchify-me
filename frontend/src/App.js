@@ -1,11 +1,17 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./components/Home";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ReadingMock from "./components/ReadingMock";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -34,15 +40,12 @@ const App = () => {
             <Route
               path="/readingmock"
               element={
-                null
+                <ProtectedRoute>
+                  <ReadingMock />
+                </ProtectedRoute>
               }
             />
-            <Route
-              path="/writingmock"
-              element={
-                null
-              }
-            />
+            <Route path="/writingmock" element={null} />
           </Routes>
         </div>
       </Router>

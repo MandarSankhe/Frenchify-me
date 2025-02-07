@@ -147,7 +147,6 @@ const ReadingMock = () => {
     setLiveScore(calculatedScore);
   }, [userAnswers, selectedExam]);
 
-  // Helper: Return custom style based on exam level
   const getLevelStyle = (level) => {
     switch (level) {
       case "Beginner":
@@ -234,7 +233,6 @@ const ReadingMock = () => {
     );
   }
 
-  // Exam selection view with custom French flag colors
   if (!selectedExam) {
     return (
       <div className="container my-5">
@@ -297,7 +295,6 @@ const ReadingMock = () => {
 
   return (
     <div className="container-fluid p-4">
-      {/* Header with Timer */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>TCF Reading Mock Test</h2>
         <div className="d-flex align-items-center">
@@ -311,7 +308,6 @@ const ReadingMock = () => {
         </div>
       </div>
 
-      {/* Progress Bar */}
       <div className="mb-4">
         <div className="progress" style={{ height: "25px" }}>
           <div
@@ -330,7 +326,6 @@ const ReadingMock = () => {
         </div>
       </div>
 
-      {/* Timeout Modal */}
       <div
         className={`modal fade ${showTimeoutModal ? "show" : ""}`}
         style={{ display: showTimeoutModal ? "block" : "none" }}
@@ -367,7 +362,6 @@ const ReadingMock = () => {
       {showTimeoutModal && <div className="modal-backdrop fade show"></div>}
 
       <div className="row">
-        {/* Navigation Sidebar */}
         <div className="col-lg-3 mb-4">
           <button
             className="btn btn-outline-danger w-100 mb-3"
@@ -442,7 +436,6 @@ const ReadingMock = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="col-lg-9">
           <div className="card shadow-lg mb-4">
             <div
@@ -462,7 +455,6 @@ const ReadingMock = () => {
           </div>
 
           {showSummary ? (
-            // Summary / Results Section
             <div className="alert shadow p-4" style={{ backgroundColor: "#f8f9fa" }}>
               <h3 className="text-center" style={{ color: frenchRed }}>
                 Test Completed!
@@ -505,7 +497,6 @@ const ReadingMock = () => {
             </div>
           ) : (
             <>
-              {/* Current Question Card */}
               <div className="card shadow p-4 mb-4">
                 <div className="card-header">
                   <h5 className="mb-0">
@@ -514,7 +505,6 @@ const ReadingMock = () => {
                 </div>
                 <div className="card-body">
                   <p className="fs-5">{currentQuestion.questionText}</p>
-                  {/* Options in 2x2 grid */}
                   <div className="row">
                     {currentQuestion.options.map((option, idx) => {
                       const answerKey = `${currentDocumentIndex}-${currentQuestionIndex}`;
@@ -541,7 +531,6 @@ const ReadingMock = () => {
                 </div>
               </div>
 
-              {/* Navigation Buttons */}
               <div className="d-flex justify-content-between">
                 <button
                   className="btn btn-outline-danger"

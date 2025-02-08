@@ -129,6 +129,13 @@ const Login = () => {
           </div>
         )}
 
+        {/* Forgot Password Link */}
+        <div className="text-center mb-3">
+          <Link to="/forgot-password" className="text-danger">
+            Forgot Password?
+          </Link>
+        </div>
+
 
         <div className="d-flex justify-content-center mb-3">
           <button type="submit" className="btn btn-primary mt-2 p-2 ps-4 pe-4">
@@ -149,3 +156,6 @@ const Login = () => {
 };
 
 export default Login;
+
+// TODO add loading 
+// TODO add: incorrect format email address : validation

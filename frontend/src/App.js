@@ -12,6 +12,8 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ReadingMock from "./components/ReadingMock";
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -46,6 +48,8 @@ const App = () => {
               }
             />
             <Route path="/writingmock" element={null} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Routes>
         </div>
       </Router>

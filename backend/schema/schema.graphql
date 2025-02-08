@@ -3,6 +3,7 @@ type Mutation {
   login(email: String!, password: String!): User
   forgotPassword(email: String!): String
   resetPassword(token: String!, newPassword: String!): String
+  submitTestScore(input: TestScoreInput!): History
 }
 
 input UserInput {
@@ -54,7 +55,31 @@ type Question {
   correctAnswer: String!
 }
 
+enum TestModelName {
+  TcfReading
+  TcfWriting
+  TcfListening
+  TcfSpeaking
+}
+
+type History {
+  id: ID!
+  userId: ID!
+  testModelName: TestModelName!
+  testId: ID!
+  score: Int!
+  createdAt: String!
+}
+
+input TestScoreInput {
+  userId: ID!
+  testModelName: TestModelName!
+  testId: ID!
+  score: Int!
+}
+
 type Query {
   users: [User]
   tcfReadings: [TCFReading]
+  testHistories(userId: ID!): [History]
 }

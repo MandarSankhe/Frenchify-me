@@ -1,6 +1,7 @@
 // resolvers.js
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const History = require("../models/History");
 const TCFReading = require("../models/TCFReading");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
@@ -28,6 +29,16 @@ const resolvers = {
       } catch (error) {
         console.error("Error fetching all TCF readings:", error);
         throw new Error("Failed to fetch TCF readings");
+      }
+    },
+
+    // New: Fetch test history (scores) for a given user
+    testHistories: async (_, { userId }) => {
+      try {
+        return await History.find({ userId });
+      } catch (error) {
+        console.error("Error fetching test histories:", error);
+        throw new Error("Failed to fetch test histories");
       }
     },
   },
@@ -138,6 +149,19 @@ const resolvers = {
         return "Password successfully reset.";
       } catch (error) {
         throw new Error("Invalid or expired token");
+      }
+    },
+
+    // New: Mutation to save a test score
+    submitTestScore: async (_, { input }) => {
+      const { userId, testModelName, testId, score } = input;
+      try {
+        const newHistory = new History({ userId, testModelName, testId, score });
+        await newHistory.save();
+        return newHistory;
+      } catch (error) {
+        console.error("Error saving test score:", error);
+        throw new Error("Failed to save test score");
       }
     },
 

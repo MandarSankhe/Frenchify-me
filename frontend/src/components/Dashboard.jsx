@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, ArcElement } from "chart.js";
 import { useAuth } from "../context/AuthContext";
@@ -17,24 +17,83 @@ ChartJS.register(
 
 const Dashboard = () => {
   const { user } = useAuth(); // Get logged-in user's data from AuthContext
+  const [testHistories, setTestHistories] = useState([]);
+
+  // Fetch test histories for the logged-in user via GraphQL.
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchTestHistories = async () => {
+      const query = `
+        query GetTestHistories($userId: ID!) {
+          testHistories(userId: $userId) {
+            id
+            testModelName
+            score
+          }
+        }
+      `;
+      const variables = { userId: user.id };
+      try {
+        const response = await fetch("http://localhost:4000/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, variables }),
+        });
+        const result = await response.json();
+        if (result.errors) {
+          console.error("GraphQL errors:", result.errors);
+        } else {
+          setTestHistories(result.data.testHistories);
+        }
+      } catch (error) {
+        console.error("Error fetching test histories:", error);
+      }
+    };
+
+    fetchTestHistories();
+  }, [user]);
+
+  // Process testHistories to derive dynamic skill progress.
+  // For example, we assume that each test history entry's score represents the progress for a skill.
+  // Here we simply take the latest score per test type.
+  let readingProgress = 0, writingProgress = 0, listeningProgress = 0, speakingProgress = 0;
+  testHistories.forEach((history) => {
+    if (history.testModelName === "TcfReading") {
+      readingProgress = history.score;
+    } else if (history.testModelName === "TcfWriting") {
+      writingProgress = history.score;
+    } else if (history.testModelName === "TcfListening") {
+      listeningProgress = history.score;
+    } else if (history.testModelName === "TcfSpeaking") {
+      speakingProgress = history.score;
+    }
+  });
 
   const skillProgressData = {
     labels: ["Reading", "Writing", "Listening", "Speaking"],
     datasets: [
       {
         label: "Skill Progress (%)",
-        data: [70, 55, 85, 60], // Sample static data
+        data: [
+          readingProgress || 0, 
+          writingProgress || 0, 
+          listeningProgress || 0, 
+          speakingProgress || 0
+        ],
         backgroundColor: ["#4caf50", "#2196f3", "#ff9800", "#f44336"],
       },
     ],
   };
 
+  // For weekly progress and vocabulary mastery, the data remains static in this example.
+  // You can extend this logic to process testHistories for a more dynamic view.
   const weeklyProgressData = {
     labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
     datasets: [
       {
         label: "Overall Progress (%)",
-        data: [30, 50, 70, 85], // Sample static data showing progress over time
+        data: [30, 50, 70, 85],
         fill: true,
         backgroundColor: "rgba(66, 133, 244, 0.2)",
         borderColor: "rgba(66, 133, 244, 1)",
@@ -47,7 +106,7 @@ const Dashboard = () => {
     datasets: [
       {
         label: "Vocabulary Mastery",
-        data: [60, 40, 20], // Sample static data showing user's vocabulary levels
+        data: [60, 40, 20],
         backgroundColor: ["#4caf50", "#2196f3", "#ff9800"],
       },
     ],

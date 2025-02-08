@@ -204,7 +204,7 @@ const ReadingMock = () => {
     setCurrentQuestionIndex(quesIndex);
   };
 
-  const handleSubmitExam = () => {
+  const handleSubmitExam = async () => {
     if (!selectedExam) return;
     setTimerActive(false);
     let calculatedScore = 0;
@@ -217,6 +217,45 @@ const ReadingMock = () => {
       });
     });
     setScore(calculatedScore);
+    
+    const mutation = `
+    mutation SubmitTestScore($input: TestScoreInput!) {
+      submitTestScore(input: $input) {
+        id
+        userId
+        testModelName
+        testId
+        score
+        createdAt
+      }
+    }
+  `;
+  const variables = {
+    input: {
+      userId: user.id,
+      testModelName: "TcfReading", // dynamic for other tests if needed
+      testId: selectedExam.id,
+      score: calculatedScore,
+    },
+  };
+
+  try {
+    const response = await fetch("http://localhost:4000/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: mutation, variables }),
+    });
+    const result = await response.json();
+    if (result.errors) {
+      console.error("GraphQL errors:", result.errors);
+      // Optionally handle errors (e.g., show a message)
+    } else {
+      console.log("Test score submitted successfully:", result.data.submitTestScore);
+    }
+  } catch (error) {
+    console.error("Error submitting test score:", error);
+  }
+
     setShowSummary(true);
   };
 

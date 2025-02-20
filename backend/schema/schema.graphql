@@ -78,8 +78,21 @@ input TestScoreInput {
   score: Int!
 }
 
+#20Feb2024
+type TCFWriting {
+  id: ID!
+  title: String!
+  level: String!
+  exercise1: String!
+  exercise2: String!
+  exercise3: String!
+  createdAt: String!
+}
+#20Feb2024
+
 type Query {
   users: [User]
   tcfReadings: [TCFReading]
   testHistories(userId: ID!): [History]
+  tcfWritings: [TCFWriting] #20Feb2024
 }

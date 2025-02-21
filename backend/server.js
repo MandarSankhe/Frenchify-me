@@ -3,6 +3,7 @@ const { ApolloServer } = require("apollo-server-express");
 const mongoose = require("mongoose");
 const { loadFilesSync } = require("@graphql-tools/load-files");
 const { mergeTypeDefs } = require("@graphql-tools/merge");
+const { HfInference } = require("@huggingface/inference");
 const path = require("path");
 const cors = require("cors");
 require("dotenv").config();
@@ -18,7 +19,7 @@ app.use(cors({}));
 
 
 // Route for generating feedback #20Feb2024
-app.post("/dev/generate-feedback", async (req, res) => {
+app.post("/generate-feedback", async (req, res) => {
   try {
     const { prompt } = req.body;
     const client = new HfInference(hfApi);
@@ -79,4 +80,3 @@ async function startServer() {
 }
 
 startServer().catch((err) => console.log(err));
-

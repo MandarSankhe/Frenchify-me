@@ -12,6 +12,7 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ReadingMock from "./components/ReadingMock";
+import WritingMock from "./components/WritingMock";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import ErrorPage from "./components/ErrorPage";
@@ -76,7 +77,14 @@ const App = () => {
     },
     {
       path: "/writingmock",
-      element: null,
+      element: (
+        <>
+          <Navbar />
+          <ProtectedRoute>
+            <WritingMock />
+          </ProtectedRoute>
+        </>
+      ),
     },
     {
       path: "/forgot-password",

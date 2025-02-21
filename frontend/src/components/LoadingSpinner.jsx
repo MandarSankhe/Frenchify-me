@@ -7,9 +7,11 @@ const LoadingSpinner = () => {
       {/* <div className="spinner-border text-light" role="status">
         <span className="visually-hidden">Loading...</span>
       </div> */}
-      <img src="../Frenchify-loading.gif" alt="loading"/>
+      <img src="../Frenchify-loading1.gif" alt="loading"/>
     </div>
   );
 };
+
+
 
 export default LoadingSpinner;

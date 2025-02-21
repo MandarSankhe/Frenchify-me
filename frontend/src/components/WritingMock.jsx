@@ -232,4 +232,6 @@ const WritingMock = () => {
   );
 };
 
+
+
 export default WritingMock;

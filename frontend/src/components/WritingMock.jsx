@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
-import OverlaySpinner from "./OverlaySpinner";
+import LoadingSpinner from "./LoadingSpinner";
 
 
 const WritingMock = () => {
@@ -183,7 +183,7 @@ const WritingMock = () => {
 
   return (
     <div className="container">
-      {loading && <OverlaySpinner />}
+      {loading && <LoadingSpinner />}
       <h2 className="text-center mb-4">Writing Test: {selectedExam.title}</h2>
       <div className="mb-4">
         <button className="btn btn-secondary" onClick={() => setSelectedExam(null)}>

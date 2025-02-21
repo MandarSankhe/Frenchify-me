@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
+  createBrowserRouter,
+  RouterProvider,
+  // Route,
   Navigate,
 } from "react-router-dom";
 import Navbar from "./components/Navbar";
@@ -12,8 +12,10 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ReadingMock from "./components/ReadingMock";
+import WritingMock from "./components/WritingMock";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
+import ErrorPage from "./components/ErrorPage";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -22,37 +24,91 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const App = () => {
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      errorElement: <ErrorPage />,
+      element: (
+        <>
+          <Navbar />
+          <Home />
+        </>
+      ),
+    },
+    {
+      path: "/register",
+      element: (
+        <>
+          <Navbar />
+          <Register />
+        </>
+      ),
+    },
+    {
+      path: "/login",
+      element: (
+        <>
+          <Navbar />
+          <Login />
+        </>
+      ),
+    },
+    {
+      path: "/dashboard",
+      element: (
+        <>
+          <Navbar />
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        </>
+      ),
+    },
+    {
+      path: "/readingmock",
+      element: (
+        <>
+          <Navbar />
+          <ProtectedRoute>
+            <ReadingMock />
+          </ProtectedRoute>
+        </>
+      ),
+    },
+    {
+      path: "/writingmock",
+      element: (
+        <>
+          <Navbar />
+          <ProtectedRoute>
+            <WritingMock />
+          </ProtectedRoute>
+        </>
+      ),
+    },
+    {
+      path: "/forgot-password",
+      element: (
+        <>
+          <Navbar />
+          <ForgotPassword />
+        </>
+      ),
+    },
+    {
+      path: "/reset-password/:token",
+      element: (
+        <>
+          <Navbar />
+          <ResetPassword />
+        </>
+      ),
+    },
+  ]);
+
   return (
     <AuthProvider>
-      <Router>
-        <Navbar />
-        <div className="container">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/readingmock"
-              element={
-                <ProtectedRoute>
-                  <ReadingMock />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/writingmock" element={null} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
-          </Routes>
-        </div>
-      </Router>
+      <RouterProvider router={router} />
     </AuthProvider>
   );
 };

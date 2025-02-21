@@ -6,6 +6,9 @@ const TCFReading = require("../models/TCFReading");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 
+
+const TCFWriting = require("../models/TCFWriting"); //#20Feb2024
+
 require("dotenv").config();
 
 const PW_MUT_SECRET_KEY = process.env.PW_MUT_SECRET_KEY;
@@ -41,6 +44,17 @@ const resolvers = {
         throw new Error("Failed to fetch test histories");
       }
     },
+
+    // Fetch all writing tests #20Feb2024
+    tcfWritings: async () => {
+      try {
+        return await TCFWriting.find();
+      } catch (error) {
+        console.error("Error fetching TCF writings:", error);
+        throw new Error("Failed to fetch TCF writings");
+      }
+    },
+    // #20Feb2024
   },
 
   Mutation: {

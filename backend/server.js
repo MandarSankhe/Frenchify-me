@@ -16,6 +16,26 @@ const app = express();
 app.use(express.json());
 app.use(cors({}));
 
+
+// Route for generating feedback #20Feb2024
+app.post("/dev/generate-feedback", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    const client = new HfInference(hfApi);
+    const chatCompletion = await client.chatCompletion({
+      //model: "Qwen/QwQ-32B-Preview",
+      model: "Qwen/Qwen2.5-Coder-32B-Instruct",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1000
+    });
+    res.json({ feedback: chatCompletion.choices[0].message.content.replace(/\n/g, "<br>") });
+  } catch (error) {
+    console.error("Error with Hugging Face API:", error);
+    res.status(500).json({ error: "Failed to generate feedback." });
+  }
+});
+//#20Feb2024
+
 // Load and merge GraphQL schema files
 const typesArray = loadFilesSync(path.join(__dirname, "./schema"), {
   extensions: ["graphql"]

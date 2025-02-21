@@ -1,9 +1,41 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import LoadingSpinner from "./LoadingSpinner";
 
+// French flag colors
+const frenchBlue = "#0055A4";
+const frenchRed = "#EF4135";
+const frenchWhite = "#FFFFFF";
+
+// Helper to return an exam image based on level
+const getExamImage = (level) => {
+  switch (level) {
+    case "Beginner":
+      return "https://www.tesl-lugano.ch/wp-content/uploads/2023/10/francese-cover-ragazzi.jpg";
+    case "Intermediate":
+      return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
+    case "Advanced":
+      return "https://www.frenchclass.in/wp-content/uploads/2024/04/French-Language-Certifications-Banner-Image.webp";
+    default:
+      return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
+  }
+};
+
+// Helper to return a border style based on exam level
+const getLevelStyle = (level) => {
+  switch (level) {
+    case "Beginner":
+      return { border: `2px solid ${frenchBlue}` };
+    case "Intermediate":
+      return { border: `2px solid ${frenchBlue}`, backgroundColor: "#f8f9fa" };
+    case "Advanced":
+      return { border: `2px solid ${frenchRed}` };
+    default:
+      return { border: "2px solid #6c757d" };
+  }
+};
 
 const WritingMock = () => {
   const [allExams, setAllExams] = useState([]);
@@ -15,18 +47,24 @@ const WritingMock = () => {
   const [loading, setLoading] = useState(false);
   const [keyboardInput, setKeyboardInput] = useState("");
 
+  // Create a ref for the on-screen keyboard
+  const keyboardRef = useRef(null);
+
+  // Handle input from on-screen keyboard
   const handleKeyboardChange = (input) => {
-    // Sync on-screen keyboard input directly with the response
     setKeyboardInput(input);
-    setResponse(input); // Update the response directly with the on-screen keyboard input
-  };
-  
-  const handlePhysicalKeyboardInput = (e) => {
-    const newValue = e.target.value;
-    setResponse(newValue); // Update response state with physical keyboard input
-    setKeyboardInput(newValue); // Sync on-screen keyboard with physical input
+    setResponse(input);
   };
 
+  // Handle input from the physical keyboard
+  const handlePhysicalKeyboardInput = (e) => {
+    const newValue = e.target.value;
+    setResponse(newValue);
+    setKeyboardInput(newValue);
+    if (keyboardRef.current) {
+      keyboardRef.current.setInput(newValue);
+    }
+  };
 
   // Fetch all writing exams
   useEffect(() => {
@@ -44,11 +82,14 @@ const WritingMock = () => {
         }
       `;
       try {
-        const res = await fetch("https://p6ib6bv3bg.execute-api.us-east-1.amazonaws.com/dev/graphql", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
-        });
+        const res = await fetch(
+          "http://localhost:4000/graphql",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query }),
+          }
+        );
         const result = await res.json();
         setAllExams(result.data.tcfWritings);
       } catch (error) {
@@ -81,19 +122,23 @@ const WritingMock = () => {
         - Language and grammar assessment
         Conclude with a score out of 10.
       `;
-  
-      const res = await fetch("https://p6ib6bv3bg.execute-api.us-east-1.amazonaws.com/dev/generate-feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt }),
-      });
-  
+
+      const res = await fetch(
+        "http://localhost:4000/generate-feedback",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        }
+      );
+
       const data = await res.json();
       setFeedback(data.feedback || "No feedback received.");
-      setResponse(""); // Clear the input field
-  
+      setResponse("");
+      setKeyboardInput("");
+      if (keyboardRef.current) {
+        keyboardRef.current.setInput("");
+      }
     } catch (error) {
       setFeedback("Error fetching feedback. Please try again.");
       console.error("Error:", error);
@@ -101,46 +146,6 @@ const WritingMock = () => {
       setLoading(false);
     }
   };
-  
-
-  // const handleSubmitExercise = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const prompt = `
-  //       Evaluate the following TCF Writing Test answer based on the question:
-  //       Question: ${currentExercise}
-  //       Answer: ${response}
-  //       Provide detailed feedback covering:
-  //         1. Content evaluation.
-  //         2. Grammar and style assessment.
-  //         3. Adherence to word count and the question.
-  //         Conclude with a score out of 10.
-  //     `;
-  //     const apiResponse = await fetch(
-  //       "https://api-inference.huggingface.co/models/google/flan-t5-large",
-  //       {
-  //         method: "POST",
-  //         headers: {
-  //           Authorization: `Bearer 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`,
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({ inputs: prompt }),
-  //       }
-  //     );
-  //     const result = await apiResponse.json();
-  //     console.log(result);
-  //     console.log(prompt);
-  //     console.log(result.generated_text);
-  //     console.log(result[0].generated_text);
-  //     setFeedback(result[0].generated_text || "No feedback received.");
-  //     setResponse("");
-  //   } catch (error) {
-  //     setFeedback("Error fetching feedback. Please try again.");
-  //     console.error("Error:", error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleNextExercise = () => {
     const exercises = [
@@ -152,26 +157,74 @@ const WritingMock = () => {
       setExerciseIndex(exerciseIndex + 1);
       setCurrentExercise(exercises[exerciseIndex + 1]);
       setFeedback("");
+      setResponse("");
+      setKeyboardInput("");
+      if (keyboardRef.current) {
+        keyboardRef.current.setInput("");
+      }
     } else {
       alert("You have completed all exercises!");
       setSelectedExam(null);
     }
   };
 
+  // Styles for inline styling using French flag colors
+  const containerStyle = {
+    backgroundColor: frenchWhite,
+    minHeight: "100vh",
+    padding: "2rem",
+  };
+
+  const headerStyle = { color: frenchBlue, fontWeight: "bold" };
+  const buttonStyle = {
+    backgroundColor: frenchRed,
+    borderColor: frenchRed,
+    color: frenchWhite,
+  };
+  const secondaryButtonStyle = {
+    backgroundColor: frenchBlue,
+    borderColor: frenchBlue,
+    color: frenchWhite,
+  };
+
+  // If no exam is selected, show the exam selection screen with updated UI
   if (!selectedExam) {
     return (
-      <div className="container">
-        <h2 className="mb-4 text-center">Select a TCF Writing Exam</h2>
-        <div className="list-group">
+      <div className="container my-5">
+        <h2 className="mb-5 text-center" style={{ color: frenchRed }}>
+          Select a TCF Writing Exam
+        </h2>
+        <div className="row">
           {allExams && allExams.length > 0 ? (
             allExams.map((exam) => (
-              <button
-                key={exam.id}
-                className="list-group-item list-group-item-action"
-                onClick={() => handleExamSelection(exam.id)}
-              >
-                <strong>{exam.title}</strong> - Level: {exam.level}
-              </button>
+              <div key={exam.id} className="col-md-4 mb-4">
+                <div
+                  className="card h-100 shadow"
+                  style={{
+                    cursor: "pointer",
+                    transition: "transform 0.2s",
+                    ...getLevelStyle(exam.level),
+                  }}
+                  onClick={() => handleExamSelection(exam.id)}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.transform = "scale(1.03)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.transform = "scale(1)")
+                  }
+                >
+                  <img
+                    src={getExamImage(exam.level)}
+                    className="card-img-top"
+                    alt={`${exam.level} Exam`}
+                    style={{ height: "200px", objectFit: "cover" }}
+                  />
+                  <div className="card-body">
+                    <h4 className="card-title">{exam.title}</h4>
+                    <p className="card-text">Level: {exam.level}</p>
+                  </div>
+                </div>
+              </div>
             ))
           ) : (
             <p className="text-center">No exams available</p>
@@ -181,17 +234,24 @@ const WritingMock = () => {
     );
   }
 
+  // Main writing exam interface
   return (
-    <div className="container">
+    <div className="container" style={containerStyle}>
       {loading && <LoadingSpinner />}
-      <h2 className="text-center mb-4">Writing Test: {selectedExam.title}</h2>
+      <h2 className="text-center mb-4" style={headerStyle}>
+        Writing Test: {selectedExam.title}
+      </h2>
       <div className="mb-4">
-        <button className="btn btn-secondary" onClick={() => setSelectedExam(null)}>
+        <button
+          className="btn mb-3"
+          style={secondaryButtonStyle}
+          onClick={() => setSelectedExam(null)}
+        >
           Back to Exam Selection
         </button>
       </div>
       <div className="mb-4">
-        <h4>Exercise {exerciseIndex + 1}:</h4>
+        <h4 style={{ color: frenchBlue }}>Exercise {exerciseIndex + 1}:</h4>
         <p>{currentExercise}</p>
         <textarea
           className="form-control"
@@ -202,28 +262,34 @@ const WritingMock = () => {
         />
       </div>
       <Keyboard
+        keyboardRef={(r) => (keyboardRef.current = r)}
         layout={{
-          default: [
-            "é è à ç ù û ë ï ô œ ê î",
-            "{space}",
-          ],
+          default: ["é è à ç ù û ë ï ô œ ê î", "{space}"],
         }}
-        input={keyboardInput} // Sync on-screen keyboard input with the response
-        onChange={handleKeyboardChange} // Append on-screen keyboard input to response
-        onKeyPress={(button) => console.log(button)}
+        input={keyboardInput}
+        onChange={handleKeyboardChange}
       />
       {feedback && (
         <div className="mt-4">
-          <h5>Feedback:</h5>
+          <h5 style={{ color: frenchBlue }}>Feedback:</h5>
           <p dangerouslySetInnerHTML={{ __html: feedback }} />
         </div>
       )}
       <div className="text-center">
-        <button className="btn btn-primary me-2" onClick={handleSubmitExercise} disabled={loading}>
+        <button
+          className="btn me-2"
+          style={buttonStyle}
+          onClick={handleSubmitExercise}
+          disabled={loading}
+        >
           {loading ? "Submitting..." : "Submit Exercise"}
         </button>
         {feedback && (
-          <button className="btn btn-success" onClick={handleNextExercise}>
+          <button
+            className="btn"
+            style={secondaryButtonStyle}
+            onClick={handleNextExercise}
+          >
             Next Exercise
           </button>
         )}
@@ -231,7 +297,5 @@ const WritingMock = () => {
     </div>
   );
 };
-
-
 
 export default WritingMock;

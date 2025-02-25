@@ -4,6 +4,11 @@ type Mutation {
   forgotPassword(email: String!): String
   resetPassword(token: String!, newPassword: String!): String
   submitTestScore(input: TestScoreInput!): History
+
+  createWritingMatch(input: CreateWritingMatchInput!): WritingMatch
+  acceptWritingMatch(matchId: ID!, opponentId: ID!): WritingMatch
+  submitWritingMatchAnswer(input: SubmitWritingMatchAnswerInput!): WritingMatch
+  finalizeWritingMatch(matchId: ID!): WritingMatch
 }
 
 input UserInput {
@@ -88,6 +93,35 @@ type TCFWriting {
   exercise3: String!
   createdAt: String!
 }
+
+type WritingMatch {
+  id: ID!
+  examId: ID!
+  examTitle: String!
+  examQuestion: String!
+  initiator: User!
+  opponent: User!
+  initiatorAnswer: String
+  opponentAnswer: String
+  initiatorFeedback: String
+  opponentFeedback: String
+  status: String!   # "pending", "active", "completed"
+  createdAt: String!
+}
+
+input CreateWritingMatchInput {
+  initiatorId: ID!
+  opponentUsername: String!
+  examId: ID!
+  examTitle: String!
+  examQuestion: String!
+}
+
+input SubmitWritingMatchAnswerInput {
+  matchId: ID!
+  userId: ID!
+  answer: String!
+}
 #20Feb2024
 
 type Query {
@@ -95,4 +129,6 @@ type Query {
   tcfReadings: [TCFReading]
   testHistories(userId: ID!): [History]
   tcfWritings: [TCFWriting] #20Feb2024
+  pendingMatches(userId: ID!): [WritingMatch]
+  match(matchId: ID!): WritingMatch
 }

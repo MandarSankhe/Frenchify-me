@@ -83,6 +83,11 @@ const Navbar = () => {
                   </NavLink>
                 </li>
                 <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/headtoheadmatch">
+                    Head2Head
+                  </NavLink>
+                </li>
+                <li className="nav-item">
                   <button
                     onClick={handleLogout}
                     className="btn btn-link nav-link"

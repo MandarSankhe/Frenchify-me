@@ -17,6 +17,7 @@ import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import ErrorPage from "./components/ErrorPage";
 import SpeakingMock from "./components/SpeakingMock";
+import HeadToHeadMatch from "./components/HeadToHeadMatch";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -94,6 +95,17 @@ const App = () => {
           <Navbar />
           <ProtectedRoute>
             <SpeakingMock />
+          </ProtectedRoute>
+        </>
+      ),
+    },
+    {
+      path: "/headtoheadmatch",
+      element: (
+        <>
+          <Navbar />
+          <ProtectedRoute>
+            <HeadToHeadMatch />
           </ProtectedRoute>
         </>
       ),

@@ -39,6 +39,11 @@ const Navbar = () => {
                   </Link>
                 </li>
                 <li className="nav-item mx-3">
+                  <Link className="nav-link" to="/speakingmock">
+                    Speaking
+                  </Link>
+                </li>
+                <li className="nav-item mx-3">
                   <Link className="nav-link" to="/readingmock">
                     Reading
                   </Link>

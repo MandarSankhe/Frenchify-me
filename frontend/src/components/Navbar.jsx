@@ -1,7 +1,12 @@
 // components/Navbar.jsx
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+// French flag color palette
+const frenchBlue = "#0055A4";
+const frenchRed = "#EF4135";
+const frenchWhite = "#FFFFFF";
 
 const Navbar = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -12,12 +17,33 @@ const Navbar = () => {
     navigate("/login"); // Redirect to login page
   };
 
+  // Common style for NavLink
+  const navLinkStyle = ({ isActive }) => ({
+    color: isActive ? frenchRed : frenchBlue,
+    fontWeight: isActive ? "600" : "400",
+    textDecoration: "none",
+    padding: "0.5rem 1rem",
+    borderBottom: isActive ? `2px solid ${frenchRed}` : "none",
+    transition: "color 0.2s ease-in-out",
+  });
+
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light">
+    <nav
+      className="navbar navbar-expand-lg navbar-light bg-white border-bottom"
+      style={{ boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)" }}
+    >
       <div className="container-fluid">
-        <Link className="navbar-brand" to="/">
-          <img src="../Logo.png" width={100} alt="Company Logo" className="custom-logo ms-3"/>
-        </Link>
+        {/* Logo / Brand */}
+        <NavLink className="navbar-brand" to="/" style={{ paddingLeft: "1rem" }}>
+          <img
+            src="../Logo.png"
+            width={100}
+            alt="Company Logo"
+            className="custom-logo"
+          />
+        </NavLink>
+
+        {/* Mobile Toggle */}
         <button
           className="navbar-toggler"
           type="button"
@@ -26,55 +52,66 @@ const Navbar = () => {
           aria-controls="navbarNav"
           aria-expanded="false"
           aria-label="Toggle navigation"
+          style={{ borderColor: frenchBlue }}
         >
-          <span className="navbar-toggler-icon"></span>
+          <span className="navbar-toggler-icon" />
         </button>
+
+        {/* Collapsible Nav Items */}
         <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto ml-3 me-4">
+          <ul className="navbar-nav ms-auto me-4">
             {isAuthenticated ? (
               <>
-                <li className="nav-item mx-3">
-                  <Link className="nav-link" to="/dashboard">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/dashboard">
                     Dashboard
-                  </Link>
+                  </NavLink>
                 </li>
-                <li className="nav-item mx-3">
-                  <Link className="nav-link" to="/speakingmock">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/speakingmock">
                     Speaking
-                  </Link>
+                  </NavLink>
                 </li>
-                <li className="nav-item mx-3">
-                  <Link className="nav-link" to="/readingmock">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/readingmock">
                     Reading
-                  </Link>
+                  </NavLink>
                 </li>
-                <li className="nav-item mx-3">
-                  <Link className="nav-link" to="/writingmock">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/writingmock">
                     Writing
-                  </Link>
+                  </NavLink>
                 </li>
-                <li className="nav-item mx-3">
-                  <button className="btn btn-link nav-link" onClick={handleLogout}>
+                <li className="nav-item">
+                  <button
+                    onClick={handleLogout}
+                    className="btn btn-link nav-link"
+                    style={{
+                      color: frenchBlue,
+                      textDecoration: "none",
+                      padding: "0.5rem 1rem",
+                    }}
+                  >
                     Logout
                   </button>
                 </li>
               </>
             ) : (
               <>
-                <li className="nav-item mx-2">
-                  <Link className="nav-link" to="/">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/">
                     Home
-                  </Link>
+                  </NavLink>
                 </li>
-                <li className="nav-item mx-2">
-                  <Link className="nav-link" to="/register">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/register">
                     Register
-                  </Link>
+                  </NavLink>
                 </li>
-                <li className="nav-item mx-2">
-                  <Link className="nav-link" to="/login">
+                <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/login">
                     Login
-                  </Link>
+                  </NavLink>
                 </li>
               </>
             )}

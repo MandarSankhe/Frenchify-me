@@ -82,7 +82,7 @@ app.post("/api/initial-question", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a software developer interviewer. Ask your very first Job interview question to start the interview. Start with basic personal questions like professional interview"
+          content: "You are an IELTS speaking test examiner. Ask your first question as if you are conducting the IELTS Speaking Test. Start with typical introductory questions used in Part 1 of the exam."
         }
       ],
       model: "meta-llama/Llama-Vision-Free",
@@ -94,6 +94,7 @@ app.post("/api/initial-question", async (req, res) => {
       stop: ["<|eot_id|>", "<|eom_id|>"],
       stream: true
     });
+    
     
     // Accumulate tokens into a string
     let feedback = "";

@@ -124,6 +124,11 @@ input SubmitWritingMatchAnswerInput {
 }
 #20Feb2024
 
+type ValidateResetTokenResponse {
+    valid: Boolean!
+    message: String!
+  }
+
 type Query {
   users: [User]
   tcfReadings: [TCFReading]
@@ -131,4 +136,5 @@ type Query {
   tcfWritings: [TCFWriting] #20Feb2024
   pendingMatches(userId: ID!): [WritingMatch]
   match(matchId: ID!): WritingMatch
+  validateResetToken(token: String!): ValidateResetTokenResponse!
 }

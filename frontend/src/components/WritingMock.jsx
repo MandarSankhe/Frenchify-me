@@ -43,6 +43,7 @@ const WritingMock = () => {
   const [currentExercise, setCurrentExercise] = useState(null);
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [response, setResponse] = useState("");
+  const [wordCount, setWordCount] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [keyboardInput, setKeyboardInput] = useState("");
@@ -54,13 +55,20 @@ const WritingMock = () => {
   const handleKeyboardChange = (input) => {
     setKeyboardInput(input);
     setResponse(input);
+    setWordCount(countWords(input));
   };
+
+  // Function to count the number of words
+  const countWords = (text) => {
+    return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+  };  
 
   // Handle input from the physical keyboard
   const handlePhysicalKeyboardInput = (e) => {
     const newValue = e.target.value;
     setResponse(newValue);
     setKeyboardInput(newValue);
+    setWordCount(countWords(newValue));
     if (keyboardRef.current) {
       keyboardRef.current.setInput(newValue);
     }
@@ -106,6 +114,8 @@ const WritingMock = () => {
     setExerciseIndex(0);
     setFeedback("");
     setCurrentExercise(exam.exercise1);
+
+    setWordCount(0);
   };
 
   const handleSubmitExercise = async () => {
@@ -139,6 +149,7 @@ const WritingMock = () => {
       if (keyboardRef.current) {
         keyboardRef.current.setInput("");
       }
+      setWordCount(0);
     } catch (error) {
       setFeedback("Error fetching feedback. Please try again.");
       console.error("Error:", error);
@@ -251,7 +262,12 @@ const WritingMock = () => {
         </button>
       </div>
       <div className="mb-4">
-        <h4 style={{ color: frenchBlue }}>Exercise {exerciseIndex + 1}:</h4>
+        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between text-center text-md-start">
+          <h4 style={{ color: frenchBlue }}>Exercise {exerciseIndex + 1}:</h4>
+          <span className="fw-bold text-primary fs-5 mt-2 mt-md-0 mb-2 text-center text-md-end">
+            Word Count: <span className="fs-4">{wordCount}</span>
+          </span>
+        </div>
         <p>{currentExercise}</p>
         <textarea
           className="form-control"
@@ -275,18 +291,18 @@ const WritingMock = () => {
           <p dangerouslySetInnerHTML={{ __html: feedback }} />
         </div>
       )}
-      <div className="text-center">
+      <div className="text-center mt-5">
         <button
-          className="btn me-2"
+          className="btn me-2 py-2 px-3"
           style={buttonStyle}
           onClick={handleSubmitExercise}
-          disabled={loading}
+          disabled={loading || feedback}
         >
           {loading ? "Submitting..." : "Submit Exercise"}
         </button>
         {feedback && (
           <button
-            className="btn"
+            className="btn me-2 py-2 px-3"
             style={secondaryButtonStyle}
             onClick={handleNextExercise}
           >

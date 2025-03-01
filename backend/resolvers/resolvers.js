@@ -13,6 +13,9 @@ const TCFWriting = require("../models/TCFWriting"); //#20Feb2024
 require("dotenv").config();
 const together = new Together();
 
+const Redis = require("ioredis");
+const redis = new Redis();
+
 const PW_MUT_SECRET_KEY = process.env.PW_MUT_SECRET_KEY;
 
 // Helper to generate AI feedback (similar to your /generate-feedback route)
@@ -242,13 +245,19 @@ const resolvers = {
     
         return "Password reset link sent to your email.";
       } catch (error) {
-        console.error("Error sending email:", error.message); // Log the actual error
+        console.error("Error sending email:", error.message);
         throw new Error(error.message);
       }
     },    
 
     resetPassword: async (_, { token, newPassword }) => {
       try {
+        // Check if token is already blacklisted
+        const isBlacklisted = await redis.get(`blacklisted:${token}`);
+        if (isBlacklisted) {
+          throw new Error("Token has already been used.");
+        }
+        // Verify token
         const decoded = jwt.verify(token, PW_MUT_SECRET_KEY);
         const user = await User.findOne({ email: decoded.email });
 
@@ -260,6 +269,9 @@ const resolvers = {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
         await user.save();
+
+        // Blacklist the token in Redis - to prevent a 2nd password change
+        await redis.set(`blacklisted:${token}`, "true", "EX", 3600); // Expires after 1 hour
 
         return "Password successfully reset.";
       } catch (error) {

@@ -37,6 +37,83 @@ const getLevelStyle = (level) => {
   }
 };
 
+// Updated FeedbackDisplay to process HTML <br> tags
+const FeedbackDisplay = ({ feedback }) => {
+  if (!feedback) return null;
+
+  // Extract the score (expects a format like "Score: 4/10")
+  const scoreMatch = feedback.match(/Score:\s*([0-9]+\/10)/i);
+  const score = scoreMatch ? scoreMatch[1] : null;
+
+  // Convert the feedback string into an array by splitting on <br> tags.
+  // This will help in parsing the sections even though feedback is a single long string.
+  const lines = feedback.split(/<br\s*\/?>/gi).map((line) => line.trim()).filter(Boolean);
+
+  // Check if feedback contains expected sections by scanning the split lines
+  const hasStrengths = lines.some((line) => line.startsWith("**Strengths:"));
+  const hasWeaknesses = lines.some((line) => line.startsWith("**Weaknesses:"));
+  const hasLanguage = lines.some((line) => line.startsWith("**Language"));
+
+  const expectedSections = hasStrengths && hasWeaknesses && hasLanguage;
+
+  if (expectedSections) {
+    let currentSection = "";
+    const sections = {};
+
+    lines.forEach((line) => {
+      if (line.startsWith("**Strengths:")) {
+        currentSection = "Strengths";
+        sections[currentSection] = [];
+      } else if (line.startsWith("**Weaknesses:")) {
+        currentSection = "Weaknesses";
+        sections[currentSection] = [];
+      } else if (line.startsWith("**Language")) {
+        currentSection = "Language and grammar assessment";
+        sections[currentSection] = [];
+      } else if (line.startsWith("Score:")) {
+        // Score is handled separately; ignore this line
+        currentSection = "";
+      } else if (currentSection && line !== "") {
+        // Remove any markdown bullet markers (e.g., "*" or "-")
+        const cleanedLine = line.replace(/^[*\-]+\s*/, "");
+        sections[currentSection].push(cleanedLine);
+      }
+    });
+
+    return (
+      <div>
+        {score && (
+          <h4 style={{ color: frenchRed, marginBottom: "1rem" }}>
+            Score: {score}
+          </h4>
+        )}
+        {Object.entries(sections).map(([section, items]) => (
+          <div key={section} className="mb-3">
+            <h5 style={{ color: frenchBlue }}>{section}</h5>
+            <ul>
+              {items.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    );
+  } else {
+    // Fallback: display the score and the raw feedback (without extra formatting)
+    return (
+      <div>
+        {score && (
+          <h4 style={{ color: frenchRed, marginBottom: "1rem" }}>
+            Score: {score}
+          </h4>
+        )}
+        <p>{feedback}</p>
+      </div>
+    );
+  }
+};
+
 const WritingMock = () => {
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
@@ -61,7 +138,7 @@ const WritingMock = () => {
   // Function to count the number of words
   const countWords = (text) => {
     return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
-  };  
+  };
 
   // Handle input from the physical keyboard
   const handlePhysicalKeyboardInput = (e) => {
@@ -90,14 +167,11 @@ const WritingMock = () => {
         }
       `;
       try {
-        const res = await fetch(
-          "http://localhost:4000/graphql",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query }),
-          }
-        );
+        const res = await fetch("http://localhost:4000/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+        });
         const result = await res.json();
         setAllExams(result.data.tcfWritings);
       } catch (error) {
@@ -114,7 +188,6 @@ const WritingMock = () => {
     setExerciseIndex(0);
     setFeedback("");
     setCurrentExercise(exam.exercise1);
-
     setWordCount(0);
   };
 
@@ -127,22 +200,20 @@ const WritingMock = () => {
         Answer: ${response}
         
         Provide detailed feedback on the answer, including:
-        - Strengths
-        - Weaknesses
-        - Language and grammar assessment
+        - **Strengths:** (e.g., clear structure, effective use of descriptive language)
+        - **Weaknesses:** (e.g., brevity, grammatical mistakes)
+        - **Language and grammar assessment:** (e.g., vocabulary, syntax)
         Conclude with a score out of 10.
       `;
 
-      const res = await fetch(
-        "http://localhost:4000/generate-feedback",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        }
-      );
+      const res = await fetch("http://localhost:4000/generate-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
 
       const data = await res.json();
+      // If no feedback is returned, set a default message
       setFeedback(data.feedback || "No feedback received.");
       setResponse("");
       setKeyboardInput("");
@@ -198,7 +269,7 @@ const WritingMock = () => {
     color: frenchWhite,
   };
 
-  // If no exam is selected, show the exam selection screen with updated UI
+  // If no exam is selected, show the exam selection screen
   if (!selectedExam) {
     return (
       <div className="container my-5">
@@ -263,7 +334,9 @@ const WritingMock = () => {
       </div>
       <div className="mb-4">
         <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between text-center text-md-start">
-          <h4 style={{ color: frenchBlue }}>Exercise {exerciseIndex + 1}:</h4>
+          <h4 style={{ color: frenchBlue }}>
+            Exercise {exerciseIndex + 1}:
+          </h4>
           <span className="fw-bold text-primary fs-5 mt-2 mt-md-0 mb-2 text-center text-md-end">
             Word Count: <span className="fs-4">{wordCount}</span>
           </span>
@@ -286,9 +359,11 @@ const WritingMock = () => {
         onChange={handleKeyboardChange}
       />
       {feedback && (
-        <div className="mt-4">
-          <h5 style={{ color: frenchBlue }}>Feedback:</h5>
-          <p dangerouslySetInnerHTML={{ __html: feedback }} />
+        <div className="mt-4 p-3 border rounded" style={{ backgroundColor: "#f8f9fa" }}>
+          <h5 style={{ color: frenchBlue, borderBottom: `1px solid ${frenchBlue}` }}>
+            Feedback
+          </h5>
+          <FeedbackDisplay feedback={feedback} />
         </div>
       )}
       <div className="text-center mt-5">

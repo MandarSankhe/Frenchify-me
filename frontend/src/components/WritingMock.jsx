@@ -37,46 +37,51 @@ const getLevelStyle = (level) => {
   }
 };
 
-// Updated FeedbackDisplay to process HTML <br> tags
+// Updated FeedbackDisplay to handle HTML <br> tags and separate score commentary
 const FeedbackDisplay = ({ feedback }) => {
   if (!feedback) return null;
 
-  // Extract the score (expects a format like "Score: 4/10")
+  // Extract the overall score from the feedback string using a regex.
   const scoreMatch = feedback.match(/Score:\s*([0-9]+\/10)/i);
   const score = scoreMatch ? scoreMatch[1] : null;
 
-  // Convert the feedback string into an array by splitting on <br> tags.
-  // This will help in parsing the sections even though feedback is a single long string.
-  const lines = feedback.split(/<br\s*\/?>/gi).map((line) => line.trim()).filter(Boolean);
+  // Split feedback using <br> tags and filter out empty lines
+  const lines = feedback.split(/<br\s*\/?>/gi).map(line => line.trim()).filter(Boolean);
 
-  // Check if feedback contains expected sections by scanning the split lines
-  const hasStrengths = lines.some((line) => line.startsWith("**Strengths:"));
-  const hasWeaknesses = lines.some((line) => line.startsWith("**Weaknesses:"));
-  const hasLanguage = lines.some((line) => line.startsWith("**Language"));
-
+  // Check if feedback contains expected sections by looking for markers
+  const hasStrengths = lines.some(line => line.startsWith("**Strengths:"));
+  const hasWeaknesses = lines.some(line => line.startsWith("**Weaknesses:"));
+  const hasLanguage = lines.some(line => line.startsWith("**Language and grammar assessment:"));
+  
   const expectedSections = hasStrengths && hasWeaknesses && hasLanguage;
 
   if (expectedSections) {
     let currentSection = "";
     const sections = {};
+    let commentary = [];
 
-    lines.forEach((line) => {
+    // Iterate through the lines and organize into sections.
+    lines.forEach(line => {
       if (line.startsWith("**Strengths:")) {
         currentSection = "Strengths";
         sections[currentSection] = [];
       } else if (line.startsWith("**Weaknesses:")) {
         currentSection = "Weaknesses";
         sections[currentSection] = [];
-      } else if (line.startsWith("**Language")) {
+      } else if (line.startsWith("**Language and grammar assessment:")) {
         currentSection = "Language and grammar assessment";
         sections[currentSection] = [];
-      } else if (line.startsWith("Score:")) {
-        // Score is handled separately; ignore this line
-        currentSection = "";
-      } else if (currentSection && line !== "") {
+      } else if (line.startsWith("**Score:")) {
+        // Extract score is already done; start commentary section afterwards.
+        currentSection = "Commentary";
+      } else if (currentSection) {
         // Remove any markdown bullet markers (e.g., "*" or "-")
         const cleanedLine = line.replace(/^[*\-]+\s*/, "");
-        sections[currentSection].push(cleanedLine);
+        if (currentSection === "Commentary") {
+          commentary.push(cleanedLine);
+        } else {
+          sections[currentSection].push(cleanedLine);
+        }
       }
     });
 
@@ -97,10 +102,16 @@ const FeedbackDisplay = ({ feedback }) => {
             </ul>
           </div>
         ))}
+        {commentary.length > 0 && (
+          <div className="mb-3">
+            <h5 style={{ color: frenchBlue }}>Overall Comments</h5>
+            <p>{commentary.join(" ")}</p>
+          </div>
+        )}
       </div>
     );
   } else {
-    // Fallback: display the score and the raw feedback (without extra formatting)
+    // Fallback: display the score and the raw feedback text
     return (
       <div>
         {score && (
@@ -213,7 +224,7 @@ const WritingMock = () => {
       });
 
       const data = await res.json();
-      // If no feedback is returned, set a default message
+      // If no feedback is returned, set a default message.
       setFeedback(data.feedback || "No feedback received.");
       setResponse("");
       setKeyboardInput("");

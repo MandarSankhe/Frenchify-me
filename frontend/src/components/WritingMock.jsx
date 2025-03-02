@@ -37,92 +37,103 @@ const getLevelStyle = (level) => {
   }
 };
 
-// Updated FeedbackDisplay to handle HTML <br> tags and separate score commentary
+// Dynamic FeedbackDisplay Component
 const FeedbackDisplay = ({ feedback }) => {
   if (!feedback) return null;
 
-  // Extract the overall score from the feedback string using a regex.
-  const scoreMatch = feedback.match(/Score:\s*([0-9]+\/10)/i);
-  const score = scoreMatch ? scoreMatch[1] : null;
+  // Remove any <think> blocks (and their content)
+  const feedbackWithoutThink = feedback.replace(/<think>[\s\S]*?<\/think>/gi, "");
 
-  // Split feedback using <br> tags and filter out empty lines
-  const lines = feedback.split(/<br\s*\/?>/gi).map(line => line.trim()).filter(Boolean);
-
-  // Check if feedback contains expected sections by looking for markers
-  const hasStrengths = lines.some(line => line.startsWith("**Strengths:"));
-  const hasWeaknesses = lines.some(line => line.startsWith("**Weaknesses:"));
-  const hasLanguage = lines.some(line => line.startsWith("**Language and grammar assessment:"));
-  
-  const expectedSections = hasStrengths && hasWeaknesses && hasLanguage;
-
-  if (expectedSections) {
-    let currentSection = "";
-    const sections = {};
-    let commentary = [];
-
-    // Iterate through the lines and organize into sections.
-    lines.forEach(line => {
-      if (line.startsWith("**Strengths:")) {
-        currentSection = "Strengths";
-        sections[currentSection] = [];
-      } else if (line.startsWith("**Weaknesses:")) {
-        currentSection = "Weaknesses";
-        sections[currentSection] = [];
-      } else if (line.startsWith("**Language and grammar assessment:")) {
-        currentSection = "Language and grammar assessment";
-        sections[currentSection] = [];
-      } else if (line.startsWith("**Score:")) {
-        // Extract score is already done; start commentary section afterwards.
-        currentSection = "Commentary";
-      } else if (currentSection) {
-        // Remove any markdown bullet markers (e.g., "*" or "-")
-        const cleanedLine = line.replace(/^[*\-]+\s*/, "");
-        if (currentSection === "Commentary") {
-          commentary.push(cleanedLine);
-        } else {
-          sections[currentSection].push(cleanedLine);
-        }
-      }
-    });
-
-    return (
-      <div>
-        {score && (
-          <h4 style={{ color: frenchRed, marginBottom: "1rem" }}>
-            Score: {score}
-          </h4>
-        )}
-        {Object.entries(sections).map(([section, items]) => (
-          <div key={section} className="mb-3">
-            <h5 style={{ color: frenchBlue }}>{section}</h5>
-            <ul>
-              {items.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
-        {commentary.length > 0 && (
-          <div className="mb-3">
-            <h5 style={{ color: frenchBlue }}>Overall Comments</h5>
-            <p>{commentary.join(" ")}</p>
-          </div>
-        )}
-      </div>
-    );
-  } else {
-    // Fallback: display the score and the raw feedback text
-    return (
-      <div>
-        {score && (
-          <h4 style={{ color: frenchRed, marginBottom: "1rem" }}>
-            Score: {score}
-          </h4>
-        )}
-        <p>{feedback}</p>
-      </div>
-    );
+  // Extract overall score.
+  // This regex now accepts optional asterisks around "Score:" and supports decimals.
+  let extractedScore = null;
+  const scoreMatch = feedbackWithoutThink.match(/(?:\*+)?Score:(?:\*+)?\s*([0-9]+\.?[0-9]*\/10)/i);
+  if (scoreMatch) {
+    extractedScore = scoreMatch[1];
   }
+
+  // Split feedback into lines using <br> as a delimiter.
+  const lines = feedbackWithoutThink
+    .split(/<br\s*\/?>/gi)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  // Containers for dynamic sections and overall commentary.
+  const sections = {};
+  let currentSection = null;
+  const commentary = [];
+
+  // Helper to extract header tokens from a line (anything between **)
+  const processLineForHeaders = (line) => {
+    const headerRegex = /\*\*(.+?)\*\*/g;
+    let match;
+    const headerTokens = [];
+    let modifiedLine = line;
+    while ((match = headerRegex.exec(line)) !== null) {
+      const token = match[1].trim();
+      headerTokens.push(token);
+      // Remove this header token from the line.
+      modifiedLine = modifiedLine.replace(match[0], "").trim();
+    }
+    return { headerTokens, modifiedLine };
+  };
+
+  // Process each line dynamically.
+  lines.forEach((line) => {
+    const { headerTokens, modifiedLine } = processLineForHeaders(line);
+    if (headerTokens.length > 0) {
+      headerTokens.forEach((token) => {
+        // If the token contains "score:", extract the score and do not treat it as a header.
+        if (/score:/i.test(token)) {
+          const innerScoreMatch = token.match(/Score:\s*([0-9]+\.?[0-9]*\/10)/i);
+          if (innerScoreMatch) {
+            extractedScore = innerScoreMatch[1];
+          }
+          // Do not update currentSection for a score token.
+        } else {
+          // Otherwise, treat this token as a new section header.
+          currentSection = token;
+          if (!sections[currentSection]) {
+            sections[currentSection] = [];
+          }
+        }
+      });
+    }
+    // If there is remaining text, add it under the current section (if any), or as overall commentary.
+    if (modifiedLine) {
+      if (currentSection) {
+        sections[currentSection].push(modifiedLine);
+      } else {
+        commentary.push(modifiedLine);
+      }
+    }
+  });
+
+  return (
+    <div>
+      {extractedScore && (
+        <h4 style={{ color: frenchRed, marginBottom: "1rem" }}>
+          Score: {extractedScore}
+        </h4>
+      )}
+      {Object.entries(sections).map(([section, items]) => (
+        <div key={section} className="mb-3">
+          <h5 style={{ color: frenchBlue }}>{section}</h5>
+          <ul>
+            {items.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {commentary.length > 0 && (
+        <div className="mb-3">
+          <h5 style={{ color: frenchBlue }}>Overall Comments</h5>
+          <p>{commentary.join(" ")}</p>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const WritingMock = () => {
@@ -210,11 +221,12 @@ const WritingMock = () => {
         Question: ${currentExercise}
         Answer: ${response}
         
-        Provide detailed feedback on the answer, including:
+        Provide detailed feedback on the answer in English, must have 4 points:
         - **Strengths:** (e.g., clear structure, effective use of descriptive language)
         - **Weaknesses:** (e.g., brevity, grammatical mistakes)
         - **Language and grammar assessment:** (e.g., vocabulary, syntax)
-        Conclude with a score out of 10.
+        - **Score:**
+        Conclude with a score out of 10. Above 4 sections are must.
       `;
 
       const res = await fetch("http://localhost:4000/generate-feedback", {

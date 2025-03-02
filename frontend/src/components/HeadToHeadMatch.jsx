@@ -152,89 +152,109 @@ const FINALIZE_WRITING_MATCH = gql`
 // It extracts the overall score and separates out any commentary following the score.
 const FeedbackDisplay = ({ feedback }) => {
   if (!feedback) return null;
-  console.log("Feedback:", feedback);
-  // Extract overall score from the feedback string
-  const scoreMatch = feedback.match(/Score:\s*([0-9]+\/10)/i);
-  const score = scoreMatch ? scoreMatch[1] : null;
 
-  // Split feedback on <br> tags into an array of lines
-  const lines = feedback.split(/<br\s*\/?>/gi).map((line) => line.trim()).filter(Boolean);
+  // Remove any <think> block and its contents.
+  const feedbackWithoutThink = feedback.replace(/<think>[\s\S]*?<\/think>/gi, "");
 
-  // Check for expected section markers
-  const hasStrengths = lines.some(line => line.startsWith("**Strengths:"));
-  const hasWeaknesses = lines.some(line => line.startsWith("**Weaknesses:"));
-  console.log("hasStrengths", hasStrengths);
-  console.log("hasWeaknesses", hasWeaknesses);
-  const hasLanguage = lines.some(line => line.startsWith("**Language"));
-  console.log("hasLanguage", hasLanguage);
-  const expectedSections = hasStrengths && hasWeaknesses && hasLanguage;
+  // Extract overall score from the cleaned feedback.
+  // Supports decimals (e.g., 7.5/10).
+  console.log("feedbackWithoutThink:", feedbackWithoutThink);
+  let extractedScore = null;
+  const scoreMatch = feedbackWithoutThink.match(/(?:\*+)?Score:(?:\*+)?\s*([0-9]+\.?[0-9]*\/10)/i);
 
-  if (expectedSections) {
-    let currentSection = "";
-    const sections = {};
-    let commentary = [];
-
-    lines.forEach(line => {
-      if (line.startsWith("**Strengths:")) {
-        currentSection = "Strengths";
-        sections[currentSection] = [];
-      } else if (line.startsWith("**Weaknesses:")) {
-        currentSection = "Weaknesses";
-        sections[currentSection] = [];
-      } else if (line.startsWith("**Language and grammar assessment:")) {
-        currentSection = "Language and grammar assessment";
-        sections[currentSection] = [];
-      } else if (line.startsWith("**Score:")) {
-        // Once the score line is encountered, switch to commentary mode
-        currentSection = "Commentary";
-      } else if (currentSection) {
-        const cleanedLine = line.replace(/^[*\-]+\s*/, "");
-        if (currentSection === "Commentary") {
-          commentary.push(cleanedLine);
-        } else {
-          sections[currentSection].push(cleanedLine);
-        }
-      }
-    });
-
-    return (
-      <div>
-        {score && (
-          <h4 style={{ color: "#EF4135", marginBottom: "1rem" }}>
-            Score: {score}
-          </h4>
-        )}
-        {Object.entries(sections).map(([section, items]) => (
-          <div key={section} className="mb-3">
-            <h5 style={{ color: "#0055A4" }}>{section}</h5>
-            <ul>
-              {items.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
-        {commentary.length > 0 && (
-          <div className="mb-3">
-            <h5 style={{ color: "#0055A4" }}>Overall Comments</h5>
-            <p>{commentary.join(" ")}</p>
-          </div>
-        )}
-      </div>
-    );
-  } else {
-    return (
-      <div>
-        {score && (
-          <h4 style={{ color: "#EF4135", marginBottom: "1rem" }}>
-            Score: {score}
-          </h4>
-        )}
-        <p>{feedback}</p>
-      </div>
-    );
+  console.log("scoreMatch:", scoreMatch);
+  if (scoreMatch) {
+    extractedScore = scoreMatch[1];
   }
+
+  // Split cleaned feedback on <br> tags into an array of lines.
+  const lines = feedbackWithoutThink
+    .split(/<br\s*\/?>/gi)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  // Prepare containers for dynamic sections and overall commentary.
+  const sections = {};
+  let currentSection = null;
+  const commentary = [];
+
+  // Helper: Process a line to extract header tokens (anything between **)
+  const processLineForHeaders = (line) => {
+    const headerRegex = /\*\*(.+?)\*\*/g;
+    let match;
+    const headerTokens = [];
+    let modifiedLine = line;
+
+    while ((match = headerRegex.exec(line)) !== null) {
+      const token = match[1].trim();
+      headerTokens.push(token);
+      // Remove the header token from the line.
+      modifiedLine = modifiedLine.replace(match[0], "").trim();
+    }
+    return { headerTokens, modifiedLine };
+  };
+
+  // Process each line dynamically.
+  lines.forEach((line) => {
+    const { headerTokens, modifiedLine } = processLineForHeaders(line);
+    if (headerTokens.length > 0) {
+      headerTokens.forEach((token) => {
+        // If the token contains "score:", extract it (and ignore it as a header).
+        if (/score:/i.test(token)) {
+          const innerScoreMatch = token.match(/Score:\s*([0-9]+\.?[0-9]*\/10)/i);
+          if (innerScoreMatch) {
+            extractedScore = innerScoreMatch[1];
+          }
+          // Do not treat this token as a section header.
+        } else {
+          // Use the token as a dynamic section header.
+          currentSection = token;
+          if (!sections[currentSection]) {
+            sections[currentSection] = [];
+          }
+        }
+      });
+    }
+    // If any remaining text exists on this line, assign it accordingly.
+    if (modifiedLine) {
+      if (currentSection) {
+        sections[currentSection].push(modifiedLine);
+      } else {
+        commentary.push(modifiedLine);
+      }
+    }
+  });
+
+  return (
+    <div>
+      {extractedScore && (
+        <h4 style={{ color: "#EF4135", marginBottom: "1rem" }}>
+          Score: {extractedScore}
+        </h4>
+      )}
+      {Object.entries(sections).map(([section, items]) => (
+        <div key={section} className="mb-3">
+          <h5 style={{ color: "#0055A4" }}>{section}</h5>
+          <ul>
+            {items.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {commentary.length > 0 && (
+        <div className="mb-3">
+          <h5 style={{ color: "#0055A4" }}>Overall Comments</h5>
+          <p>{commentary.join(" ")}</p>
+        </div>
+      )}
+    </div>
+  );
 };
+
+
+
+
 
 // --- HeadToHeadMatch Component ---
 const HeadToHeadMatch = () => {

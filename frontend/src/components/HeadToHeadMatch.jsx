@@ -147,7 +147,96 @@ const FINALIZE_WRITING_MATCH = gql`
   }
 `;
 
-// --- Component ---
+// --- FeedbackDisplay Component ---
+// This component parses the feedback string (formatted with <br> tags) into sections.
+// It extracts the overall score and separates out any commentary following the score.
+const FeedbackDisplay = ({ feedback }) => {
+  if (!feedback) return null;
+  console.log("Feedback:", feedback);
+  // Extract overall score from the feedback string
+  const scoreMatch = feedback.match(/Score:\s*([0-9]+\/10)/i);
+  const score = scoreMatch ? scoreMatch[1] : null;
+
+  // Split feedback on <br> tags into an array of lines
+  const lines = feedback.split(/<br\s*\/?>/gi).map((line) => line.trim()).filter(Boolean);
+
+  // Check for expected section markers
+  const hasStrengths = lines.some(line => line.startsWith("**Strengths:"));
+  const hasWeaknesses = lines.some(line => line.startsWith("**Weaknesses:"));
+  console.log("hasStrengths", hasStrengths);
+  console.log("hasWeaknesses", hasWeaknesses);
+  const hasLanguage = lines.some(line => line.startsWith("**Language"));
+  console.log("hasLanguage", hasLanguage);
+  const expectedSections = hasStrengths && hasWeaknesses && hasLanguage;
+
+  if (expectedSections) {
+    let currentSection = "";
+    const sections = {};
+    let commentary = [];
+
+    lines.forEach(line => {
+      if (line.startsWith("**Strengths:")) {
+        currentSection = "Strengths";
+        sections[currentSection] = [];
+      } else if (line.startsWith("**Weaknesses:")) {
+        currentSection = "Weaknesses";
+        sections[currentSection] = [];
+      } else if (line.startsWith("**Language and grammar assessment:")) {
+        currentSection = "Language and grammar assessment";
+        sections[currentSection] = [];
+      } else if (line.startsWith("**Score:")) {
+        // Once the score line is encountered, switch to commentary mode
+        currentSection = "Commentary";
+      } else if (currentSection) {
+        const cleanedLine = line.replace(/^[*\-]+\s*/, "");
+        if (currentSection === "Commentary") {
+          commentary.push(cleanedLine);
+        } else {
+          sections[currentSection].push(cleanedLine);
+        }
+      }
+    });
+
+    return (
+      <div>
+        {score && (
+          <h4 style={{ color: "#EF4135", marginBottom: "1rem" }}>
+            Score: {score}
+          </h4>
+        )}
+        {Object.entries(sections).map(([section, items]) => (
+          <div key={section} className="mb-3">
+            <h5 style={{ color: "#0055A4" }}>{section}</h5>
+            <ul>
+              {items.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {commentary.length > 0 && (
+          <div className="mb-3">
+            <h5 style={{ color: "#0055A4" }}>Overall Comments</h5>
+            <p>{commentary.join(" ")}</p>
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    return (
+      <div>
+        {score && (
+          <h4 style={{ color: "#EF4135", marginBottom: "1rem" }}>
+            Score: {score}
+          </h4>
+        )}
+        <p>{feedback}</p>
+      </div>
+    );
+  }
+};
+
+// --- HeadToHeadMatch Component ---
 const HeadToHeadMatch = () => {
   const { user } = useAuth();
 
@@ -163,7 +252,7 @@ const HeadToHeadMatch = () => {
   // Fetch exams
   const { data: examData, loading: examLoading } = useQuery(GET_TCF_WRITINGS);
 
-  // Fetch pending matches (this may not return completed matches)
+  // Fetch pending matches
   const { data: pendingData, loading: pendingLoading, refetch: refetchPending } = useQuery(
     GET_PENDING_MATCHES,
     {
@@ -173,10 +262,9 @@ const HeadToHeadMatch = () => {
     }
   );
 
-  // When pending matches update, update activeMatch if available.
+  // Update activeMatch when pending matches change
   useEffect(() => {
     if (pendingData && pendingData.pendingMatches) {
-      console.log("Pending matches:", pendingData.pendingMatches);
       if (activeMatch) {
         const updatedMatch = pendingData.pendingMatches.find(
           (match) => match.id === activeMatch.id
@@ -195,7 +283,7 @@ const HeadToHeadMatch = () => {
     }
   }, [pendingData]);
 
-  // When exam data changes
+  // Update selectedExam when examData changes
   useEffect(() => {
     if (examData && examData.tcfWritings) {
       const exam = examData.tcfWritings.find((ex) => ex.id === selectedExamId);
@@ -203,7 +291,7 @@ const HeadToHeadMatch = () => {
     }
   }, [selectedExamId, examData]);
 
-  // NEW: When a match is active and not pending, poll for match details including feedback.
+  // Poll for match details when active match is not pending
   const { data: matchDetailsData, loading: matchDetailsLoading } = useQuery(GET_MATCH_DETAILS, {
     variables: { matchId: activeMatch?.id },
     skip: !activeMatch || activeMatch.status === "pending",
@@ -303,7 +391,8 @@ const HeadToHeadMatch = () => {
     }
   };
 
-  if (loading || examLoading || pendingLoading || matchDetailsLoading) return <LoadingSpinner />;
+  if (loading || examLoading || pendingLoading || matchDetailsLoading)
+    return <LoadingSpinner />;
   if (!user) return <div>Please log in.</div>;
 
   // Defensive check: if activeMatch exists but is missing initiator data, show fallback.
@@ -342,8 +431,8 @@ const HeadToHeadMatch = () => {
           </p>
           {isInitiator ? (
             <p>
-              Match Request Sent. Waiting for <strong>{activeMatch.opponent.username}</strong> to
-              accept.
+              Match Request Sent. Waiting for <strong>{activeMatch.opponent.username}</strong>{" "}
+              to accept.
             </p>
           ) : (
             <div>
@@ -394,7 +483,7 @@ const HeadToHeadMatch = () => {
             {myFeedback && (
               <div className="mt-3">
                 <h5>Your Feedback</h5>
-                <div dangerouslySetInnerHTML={{ __html: myFeedback }} />
+                <FeedbackDisplay feedback={myFeedback} />
               </div>
             )}
           </div>
@@ -414,7 +503,7 @@ const HeadToHeadMatch = () => {
             {oppFeedback && activeMatch.status === "completed" && (
               <div className="mt-3">
                 <h5>Opponent's Feedback</h5>
-                <div dangerouslySetInnerHTML={{ __html: oppFeedback }} />
+                <FeedbackDisplay feedback={oppFeedback} />
               </div>
             )}
           </div>

@@ -13,11 +13,11 @@ const frenchWhite = "#FFFFFF";
 const getExamImage = (level) => {
   switch (level) {
     case "Beginner":
-      return "https://www.tesl-lugano.ch/wp-content/uploads/2023/10/francese-cover-ragazzi.jpg";
+      return "https://st.depositphotos.com/68420530/61027/i/450/depositphotos_610276066-stock-photo-cheerful-young-pupil-secondary-school.jpg";
     case "Intermediate":
       return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
     case "Advanced":
-      return "https://www.frenchclass.in/wp-content/uploads/2024/04/French-Language-Certifications-Banner-Image.webp";
+      return "https://admissionsight.com/wp-content/uploads/2020/09/shutterstock_2072405507-768x512.jpg";
     default:
       return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
   }

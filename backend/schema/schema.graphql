@@ -43,6 +43,15 @@ type TCFReading {
   createdAt: String!
 }
 
+type TCFSpeaking {
+  id: ID!
+  topic: String!
+  mainQuestion1: String!
+  mainQuestion2: String!
+  mainQuestion3: String!
+  createdAt: String!
+}
+
 type DocumentSet {
   document: Document!
   questions: [Question!]!
@@ -137,4 +146,5 @@ type Query {
   pendingMatches(userId: ID!): [WritingMatch]
   match(matchId: ID!): WritingMatch
   validateResetToken(token: String!): ValidateResetTokenResponse!
+  tcfSpeakings: [TCFSpeaking]!
 }

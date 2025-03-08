@@ -138,6 +138,21 @@ type ValidateResetTokenResponse {
     message: String!
   }
 
+type TCFListening {
+  id: ID!
+  title: String!
+  difficulty: String!
+  questions: [ListeningQuestion!]!
+  createdAt: String!
+}
+
+type ListeningQuestion {
+  audioText: String!
+  questionText: String!
+  options: [String!]!
+  correctAnswer: String!
+}
+
 type Query {
   users: [User]
   tcfReadings: [TCFReading]
@@ -147,4 +162,5 @@ type Query {
   match(matchId: ID!): WritingMatch
   validateResetToken(token: String!): ValidateResetTokenResponse!
   tcfSpeakings: [TCFSpeaking]!
+  tcfListenings: [TCFListening]!
 }

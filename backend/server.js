@@ -227,6 +227,60 @@ Fournissez un retour concis en deux lignes maximum, sans mentionner que la répo
   }
 });
 
+/**
+ Endpoint: /api/listening-question
+ Expects { examId, questionIndex } in the request body.
+ Fetches the corresponding question from TCFListening,
+ uses MeloTTS via Gradio Client to convert the audioText to speech,
+ and returns the audio URL along with the question text and options.
+*/
+app.post("/api/listening-question", async (req, res) => {
+  try {
+    const { examId, questionIndex } = req.body;
+    if (examId === undefined || questionIndex === undefined) {
+      return res.status(400).json({ error: "examId and questionIndex are required." });
+    }
+    const TCFListening = require("./models/TCFListening");
+    const exam = await TCFListening.findById(examId);
+    if (!exam) {
+      return res.status(404).json({ error: "Exam not found." });
+    }
+    if (questionIndex < 0 || questionIndex >= exam.questions.length) {
+      return res.status(400).json({ error: "Invalid question index." });
+    }
+    const question = exam.questions[questionIndex];
+    const fullText = question.audioText;
+    // Use MeloTTS via Gradio Client (reuse similar logic as in /api/initial-question)
+    await loadGradioClient();
+    const melottsClient = await Client.connect("mrfakename/MeloTTS");
+    const speakers = await melottsClient.predict("/load_speakers", {
+      language: "FR",
+      text: "Bonjour!",
+    });
+    if (!speakers || speakers.length === 0) {
+      throw new Error("No valid speakers found for MeloTTS.");
+    }
+    const selectedSpeaker = speakers.data[0]?.value;
+    if (!selectedSpeaker) {
+      throw new Error("No valid speakers found for MeloTTS.");
+    }
+    const ttsResponse = await melottsClient.predict("/synthesize", {
+      text: fullText,
+      speaker: selectedSpeaker,
+      speed: 1,
+      language: "FR",
+    });
+    res.json({
+      audio: ttsResponse,
+      questionText: question.questionText,
+      options: question.options,
+    });
+  } catch (error) {
+    console.error("Error in listening question endpoint:", error);
+    res.status(500).json({ error: "Failed to generate listening question." });
+  }
+});
+
 // Load and merge GraphQL schema files
 const typesArray = loadFilesSync(path.join(__dirname, "./schema"), {
   extensions: ["graphql"]

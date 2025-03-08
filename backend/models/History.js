@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const historySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",   // or whatever your User model is named
+    ref: "User",
     required: true,
   },
   // This field tells Mongoose which model to use for 'testId'
@@ -21,7 +21,6 @@ const historySchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  // You might also keep metadata like date/time taken etc.
 });
 
 module.exports = mongoose.model("History", historySchema);

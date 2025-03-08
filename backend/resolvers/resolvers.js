@@ -91,7 +91,6 @@ const resolvers = {
       }
     },
     
-
     // New: Fetch test history (scores) for a given user
     testHistories: async (_, { userId }) => {
       try {

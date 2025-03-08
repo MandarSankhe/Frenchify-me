@@ -43,6 +43,15 @@ type TCFReading {
   createdAt: String!
 }
 
+type TCFSpeaking {
+  id: ID!
+  topic: String!
+  mainQuestion1: String!
+  mainQuestion2: String!
+  mainQuestion3: String!
+  createdAt: String!
+}
+
 type DocumentSet {
   document: Document!
   questions: [Question!]!
@@ -129,6 +138,21 @@ type ValidateResetTokenResponse {
     message: String!
   }
 
+type TCFListening {
+  id: ID!
+  title: String!
+  difficulty: String!
+  questions: [ListeningQuestion!]!
+  createdAt: String!
+}
+
+type ListeningQuestion {
+  audioText: String!
+  questionText: String!
+  options: [String!]!
+  correctAnswer: String!
+}
+
 type Query {
   users: [User]
   tcfReadings: [TCFReading]
@@ -137,4 +161,6 @@ type Query {
   pendingMatches(userId: ID!): [WritingMatch]
   match(matchId: ID!): WritingMatch
   validateResetToken(token: String!): ValidateResetTokenResponse!
+  tcfSpeakings: [TCFSpeaking]!
+  tcfListenings: [TCFListening]!
 }

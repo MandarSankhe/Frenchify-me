@@ -9,6 +9,8 @@ const { Together } = require("together-ai");
 const WritingMatch = require("../models/WritingMatch");
 const mongoose = require("mongoose");
 const TCFWriting = require("../models/TCFWriting"); //#20Feb2024
+const TCFSpeaking = require("../models/TCFSpeaking");
+const TCFListening = require("../models/TCFListening");
 
 require("dotenv").config();
 const together = new Together();
@@ -69,6 +71,26 @@ const resolvers = {
         throw new Error("Failed to fetch TCF readings");
       }
     },
+
+    // Fetch all speaking topics
+    tcfSpeakings: async () => {
+      try {
+        return await TCFSpeaking.find();
+      } catch (error) {
+        console.error("Error fetching speaking topics:", error);
+        throw new Error("Failed to fetch speaking topics");
+      }
+    },
+
+    tcfListenings: async () => {
+      try {
+        return await TCFListening.find();
+      } catch (error) {
+        console.error("Error fetching TCF listenings:", error);
+        throw new Error("Failed to fetch TCF listenings");
+      }
+    },
+    
 
     // New: Fetch test history (scores) for a given user
     testHistories: async (_, { userId }) => {
@@ -291,8 +313,6 @@ const resolvers = {
         throw new Error("Failed to save test score");
       }
     },
-
-
 
     // Create a new match request
     createWritingMatch: async (_, { input }) => {

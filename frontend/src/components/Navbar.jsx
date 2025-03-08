@@ -73,6 +73,11 @@ const Navbar = () => {
                   </NavLink>
                 </li>
                 <li className="nav-item">
+                  <NavLink style={navLinkStyle} to="/listeningmock">
+                    Listening
+                  </NavLink>
+                </li>
+                <li className="nav-item">
                   <NavLink style={navLinkStyle} to="/readingmock">
                     Reading
                   </NavLink>

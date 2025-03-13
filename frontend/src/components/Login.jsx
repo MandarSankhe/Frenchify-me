@@ -156,6 +156,3 @@ const Login = () => {
 };
 
 export default Login;
-
-// TODO add loading 
-// TODO add: incorrect format email address : validation

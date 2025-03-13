@@ -31,9 +31,9 @@ const ReadingMock = () => {
       case "Beginner":
         return "https://www.tesl-lugano.ch/wp-content/uploads/2023/10/francese-cover-ragazzi.jpg";
       case "Intermediate":
-        return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
+        return "https://i.ytimg.com/vi/VPa1E3ye8k0/hq720.jpg?sqp=-oaymwEXCK4FEIIDSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLC0kFW2b7AhmIEj-vNaJRYvtE6xCw";
       case "Advanced":
-        return "https://www.frenchclass.in/wp-content/uploads/2024/04/French-Language-Certifications-Banner-Image.webp";
+        return "https://thumbs.dreamstime.com/b/paris-france-nov-person-reading-french-newspaper-la-croix-cozy-living-room-front-page-headline-revanche-covering-donald-344226829.jpg";
       default:
         return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
     }

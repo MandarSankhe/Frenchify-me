@@ -1,21 +1,51 @@
 // components/Navbar.jsx
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { FaUser } from "react-icons/fa";
 
 // French flag color palette
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
-const frenchWhite = "#FFFFFF";
+// const frenchWhite = "#FFFFFF";
 
 const Navbar = () => {
   const { isAuthenticated, logout } = useAuth();
+  const [user, setUser] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  // useEffect(() => {
+  //   // Get the user from localStorage and set the state
+  //   const storedUser = localStorage.getItem('user');
+  //   if (storedUser) {
+  //     setUser(JSON.parse(storedUser));
+  //   }
+  // }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = () => {
-    logout(); // Set authentication state to false
-    navigate("/login"); // Redirect to login page
+    logout();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate("/login");
   };
+
+  // const profilePictureUrl = user ? `http://localhost:5373${user.profilePicture}` : "/uploads/default-profile.jpg";
 
   // Common style for NavLink
   const navLinkStyle = ({ isActive }) => ({
@@ -28,19 +58,11 @@ const Navbar = () => {
   });
 
   return (
-    <nav
-      className="navbar navbar-expand-lg navbar-light bg-white border-bottom"
-      style={{ boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)" }}
-    >
+    <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
       <div className="container-fluid">
         {/* Logo / Brand */}
         <NavLink className="navbar-brand" to="/" style={{ paddingLeft: "1rem" }}>
-          <img
-            src="../Logo.png"
-            width={100}
-            alt="Company Logo"
-            className="custom-logo"
-          />
+          <img src="../Logo.png" width={100} alt="Company Logo" className="custom-logo" />
         </NavLink>
 
         {/* Mobile Toggle */}
@@ -63,63 +85,88 @@ const Navbar = () => {
             {isAuthenticated ? (
               <>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/dashboard">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/dashboard">
                     Dashboard
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/speakingmock">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/speakingmock">
                     Speaking
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/listeningmock">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/listeningmock">
                     Listening
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/readingmock">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/readingmock">
                     Reading
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/writingmock">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/writingmock">
                     Writing
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/headtoheadmatch">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/headtoheadmatch">
                     Head2Head
                   </NavLink>
                 </li>
-                <li className="nav-item">
+                <div className="dropdown" ref={dropdownRef}>
                   <button
-                    onClick={handleLogout}
-                    className="btn btn-link nav-link"
-                    style={{
-                      color: frenchBlue,
-                      textDecoration: "none",
-                      padding: "0.5rem 1rem",
-                    }}
+                    className="btn btn-link dropdown-toggle d-flex align-items-center"
+                    type="button"
+                    id="dropdownMenuButton"
+                    data-bs-toggle="dropdown"
+                    aria-expanded={dropdownOpen}
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
                   >
+                  <FaUser />
+                    
+                  </button>
+
+              {/* Dropdown menu */}
+              <ul
+                className={`dropdown-menu dropdown-menu-end shadow-lg ${dropdownOpen ? "show" : ""}`}
+                aria-labelledby="dropdownMenuButton"
+              >
+                <li>
+                  <button
+                    onClick={() => { navigate('/user-settings'); setDropdownOpen(false); }}
+                    className="dropdown-item d-flex align-items-center"
+                  >
+                    {/* <FaCog className="me-2" /> */}
+                    Settings
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { handleLogout(); setDropdownOpen(false); }}
+                    className="dropdown-item d-flex align-items-center text-danger"
+                  >
+                    {/* <FaSignOutAlt className="me-2" /> */}
                     Logout
                   </button>
                 </li>
+              </ul>
+            </div>
               </>
             ) : (
               <>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/">
                     Home
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/register">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/register">
                     Register
                   </NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink style={navLinkStyle} to="/login">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/login">
                     Login
                   </NavLink>
                 </li>

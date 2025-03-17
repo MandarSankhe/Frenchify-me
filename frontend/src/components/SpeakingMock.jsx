@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { ReactMic } from "react-mic";
 import LoadingSpinner from "./LoadingSpinner";
+import { FaRedo, FaPlay, FaPause } from "react-icons/fa";
+// import { FaRedo, FaPlay, FaPause } from "../../node_modules/react-icons/fa";
 
 // Use the same exam image logic as in your writing mock.
 const getExamImage = (topic) => {
@@ -23,8 +25,10 @@ const frenchWhite = "#FFFFFF";
 
 // Scoring function
 const calculateScore = (userResponses) => {
-  // Each response gets 3 points.
-  const total = Object.values(userResponses).reduce((sum, resp) => sum + 3, 0);
+  // Each response gets 3 points
+
+  const total = Object.values(userResponses).reduce((sum) => sum + 3, 0);
+
   // Maximum possible: 9 responses * 3 = 27, scale to 10
   return Math.round((total / 27) * 10);
 };
@@ -51,9 +55,9 @@ const SpeakingMock = () => {
 
   const [recording, setRecording] = useState(false);
   const [lastPlayedAudioId, setLastPlayedAudioId] = useState(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const audioRef = useRef(null);
 
-  // overallQuestionIndex = (currentMainQuestion - 1) * 3 + followupCountRef.current + 1
   const overallQuestionIndex = (currentMainQuestionRef.current - 1) * 3 + followupCountRef.current + 1;
 
   // Fetch speaking exams from GraphQL
@@ -99,6 +103,30 @@ const SpeakingMock = () => {
     setFinalFeedback("");
   };
 
+  // Handler to replay audio from start
+  const handleReplayAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0; // Reset to beginning
+      audioRef.current.play()
+        .then(() => setIsAudioPlaying(true))
+        .catch(err => console.error("Replay failed:", err));
+    }
+  };
+
+  // Handler to toggle pause/play
+  const toggleAudioPlayback = () => {
+    if (audioRef.current) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
+        setIsAudioPlaying(false);
+      } else {
+        audioRef.current.play()
+          .then(() => setIsAudioPlaying(true))
+          .catch(err => console.error("Play failed:", err));
+      }
+    }
+  };
+
   // Auto-play latest AI audio using hidden <audio>
   useEffect(() => {
     const latestAIMessage = conversationHistory
@@ -108,7 +136,10 @@ const SpeakingMock = () => {
       audioRef.current.src = latestAIMessage.audio;
       audioRef.current
         .play()
-        .then(() => setLastPlayedAudioId(latestAIMessage.id))
+        .then(() => {
+          setLastPlayedAudioId(latestAIMessage.id);
+          setIsAudioPlaying(true);
+        })
         .catch((err) => console.warn("Auto-play failed:", err));
     }
   }, [conversationHistory, lastPlayedAudioId]);
@@ -546,6 +577,26 @@ const SpeakingMock = () => {
         >
           Stop Recording
         </button>
+        {/* Replay and Pause buttons */}
+        <button
+          className="btn me-2"
+          title="Replay audio"
+          onClick={handleReplayAudio}
+          style={{ backgroundColor: "transparent", border: "none" }}
+        >
+          <FaRedo size={24} color={frenchBlue} />
+        </button>
+        <button
+          className="btn me-2"
+          onClick={toggleAudioPlayback}
+          style={{ backgroundColor: "transparent", border: "none" }}
+        >
+          {isAudioPlaying ? (
+            <FaPause size={24} color={frenchRed} />
+          ) : (
+            <FaPlay size={24} color={frenchBlue} />
+          )}
+        </button>
         <div className="mt-3">
           <ReactMic
             record={recording}
@@ -608,4 +659,8 @@ const SpeakingMock = () => {
 
 export default SpeakingMock;
 
-// TODO rachna Scoring
+// TODO rachna Scoring: Extract score to a variable
+// When test is over, disable speaking
+// test scoring (1/10)
+// Replay, pause button, check if speed can be configured
+

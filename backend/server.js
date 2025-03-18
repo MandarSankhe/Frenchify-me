@@ -240,7 +240,7 @@ app.post("/api/listening-question", async (req, res) => {
     if (examId === undefined || questionIndex === undefined) {
       return res.status(400).json({ error: "examId and questionIndex are required." });
     }
-    const TCFListening = require("./models/TCFListening");
+    const TCFListening = require("./models/TCFListeningTraining");
     const exam = await TCFListening.findById(examId);
     if (!exam) {
       return res.status(404).json({ error: "Exam not found." });
@@ -270,6 +270,7 @@ app.post("/api/listening-question", async (req, res) => {
       speed: 1,
       language: "FR",
     });
+    console.log("Converting audio response...", ttsResponse);
     res.json({
       audio: ttsResponse,
       questionText: question.questionText,
@@ -280,6 +281,62 @@ app.post("/api/listening-question", async (req, res) => {
     res.status(500).json({ error: "Failed to generate listening question." });
   }
 });
+
+
+app.post("/api/mock-listening-question", async (req, res) => {
+  try {
+    const { examId, passageIndex, questionIndex } = req.body;
+    if (examId === undefined || passageIndex === undefined || questionIndex === undefined) {
+      return res.status(400).json({ error: "examId, passageIndex, and questionIndex are required." });
+    }
+    // Use the new model for TCF mock listening exam
+    const TCFListening = require("./models/TCFListening");
+    const exam = await TCFListening.findById(examId);
+    if (!exam) {
+      return res.status(404).json({ error: "Exam not found." });
+    }
+    if (passageIndex < 0 || passageIndex >= exam.passages.length) {
+      return res.status(400).json({ error: "Invalid passage index." });
+    }
+    const passage = exam.passages[passageIndex];
+    if (questionIndex < 0 || questionIndex >= passage.questions.length) {
+      return res.status(400).json({ error: "Invalid question index." });
+    }
+    const question = passage.questions[questionIndex];
+    // For the audio, we use the passage text (the spoken content)
+    const fullText = passage.passageText;
+    // Use MeloTTS via Gradio Client (similar to /api/initial-question)
+    await loadGradioClient();
+    const melottsClient = await Client.connect("mrfakename/MeloTTS");
+    const speakers = await melottsClient.predict("/load_speakers", {
+      language: "FR",
+      text: "Bonjour!",
+    });
+    if (!speakers || speakers.length === 0) {
+      throw new Error("No valid speakers found for MeloTTS.");
+    }
+    const selectedSpeaker = speakers.data[0]?.value;
+    if (!selectedSpeaker) {
+      throw new Error("No valid speakers found for MeloTTS.");
+    }
+    const ttsResponse = await melottsClient.predict("/synthesize", {
+      text: fullText,
+      speaker: selectedSpeaker,
+      speed: 1,
+      language: "FR",
+    });
+    console.log("Converting audio response...", ttsResponse);
+    res.json({
+      audio: ttsResponse,
+      questionText: question.questionText,
+      options: question.options,
+    });
+  } catch (error) {
+    console.error("Error in mock listening question endpoint:", error);
+    res.status(500).json({ error: "Failed to generate mock listening question." });
+  }
+});
+
 
 // Load and merge GraphQL schema files
 const typesArray = loadFilesSync(path.join(__dirname, "./schema"), {

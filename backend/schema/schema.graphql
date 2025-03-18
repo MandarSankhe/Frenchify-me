@@ -72,6 +72,7 @@ type Question {
 enum TestModelName {
   TcfReading
   TcfWriting
+  TcfListeningTraining
   TcfListening
   TcfSpeaking
 }
@@ -138,20 +139,41 @@ type ValidateResetTokenResponse {
     message: String!
   }
 
-type TCFListening {
+type TCFListeningTraining {
   id: ID!
   title: String!
   difficulty: String!
-  questions: [ListeningQuestion!]!
+  questions: [ListeningTrainingQuestion!]!
   createdAt: String!
 }
 
-type ListeningQuestion {
+type ListeningTrainingQuestion {
   audioText: String!
   questionText: String!
   options: [String!]!
   correctAnswer: String!
 }
+
+type TCFListening {
+  id: ID!
+  title: String!
+  difficulty: String!
+  passages: [Passage!]!
+  totalQuestions: Int!
+  createdAt: String!
+}
+
+type Passage {
+  passageText: String!
+  questions: [ListeningQuestion!]!
+}
+
+type ListeningQuestion {
+  questionText: String!
+  options: [String!]!
+  correctAnswer: String!
+}
+
 
 type Query {
   users: [User]
@@ -162,5 +184,6 @@ type Query {
   match(matchId: ID!): WritingMatch
   validateResetToken(token: String!): ValidateResetTokenResponse!
   tcfSpeakings: [TCFSpeaking]!
-  tcfListenings: [TCFListening]!
+  tcfListeningtrainings: [TCFListeningTraining]!
+  tcfListenings: [TCFListening]! 
 }

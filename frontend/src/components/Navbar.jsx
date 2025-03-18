@@ -95,6 +95,11 @@ const Navbar = () => {
                   </NavLink>
                 </li>
                 <li className="nav-item">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/listeningtraining">
+                    Listening Training
+                  </NavLink>
+                </li>
+                <li className="nav-item">
                   <NavLink className="nav-link" style={navLinkStyle} to="/listeningmock">
                     Listening
                   </NavLink>

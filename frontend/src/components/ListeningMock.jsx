@@ -7,21 +7,21 @@ const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
 
 const ListeningMock = () => {
-  const [allExams, setAllExams] = useState([]);
+  const [examList, setExamList] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
   const [mode, setMode] = useState(null); // "practice" or "mock"
-  const [showModeModal, setShowModeModal] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState({});
+  const [showModeModal, setShowModeModal] = useState(true);
+  const [currentPassageIndex, setCurrentPassageIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState({}); // keys: global question index (0-indexed)
   const [isLoading, setIsLoading] = useState(false);
-  const [questionData, setQuestionData] = useState(null);
-  const [finalScore, setFinalScore] = useState(null);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [timer, setTimer] = useState(90); // 90 seconds per passage in mock mode
   const [audioError, setAudioError] = useState("");
-  const [countdown, setCountdown] = useState(15);
-
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioReady, setAudioReady] = useState(false); // audio is loaded and started
   const audioRef = useRef(null);
 
-  // Fetch listening exams via GraphQL
+  // Fetch exam list from GraphQL
   useEffect(() => {
     const fetchExams = async () => {
       try {
@@ -35,141 +35,168 @@ const ListeningMock = () => {
                   id
                   title
                   difficulty
-                  questions {
-                    audioText
-                    questionText
-                    options
-                    correctAnswer
+                  passages {
+                    passageText
+                    questions {
+                      questionText
+                      options
+                      correctAnswer
+                    }
                   }
+                  totalQuestions
                 }
               }
-            `,
-          }),
+            `
+          })
         });
         const result = await res.json();
-        setAllExams(result.data.tcfListenings);
-      } catch (error) {
-        console.error("Error fetching listening exams:", error);
+        if (result.data && result.data.tcfListenings) {
+          setExamList(result.data.tcfListenings);
+        }
+      } catch (err) {
+        console.error("Error fetching exam data:", err);
       }
     };
     fetchExams();
   }, []);
 
-  // Handle exam selection – open modal for mode selection
-  const handleExamSelection = (examId) => {
-    const exam = allExams.find((e) => e.id === examId);
-    setSelectedExam(exam);
-    setShowModeModal(true);
-  };
+  // Timer effect for mock mode - start countdown only when audio is ready and not playing
+  useEffect(() => {
+    if (mode !== "mock" || isAudioPlaying || !audioReady) return;
+    if (timer === 0) {
+      handleNextPassage();
+      setTimer(90);
+      return;
+    }
+    const countdown = setInterval(() => {
+      setTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(countdown);
+  }, [timer, mode, currentPassageIndex, isAudioPlaying, audioReady]);
 
-  // When user picks a mode, close the modal and start with question 0
-  const handleModeSelect = (selectedMode) => {
-    setMode(selectedMode);
-    setShowModeModal(false);
-    setCurrentQuestionIndex(0);
-    setUserAnswers({});
-    setFinalScore(null);
-    fetchQuestion(selectedExam.id, 0);
-  };
-
-  // Fetch question audio (and other info) using backend endpoint
-  const fetchQuestion = async (examId, questionIndex) => {
+  // Fetch passage audio from API endpoint (using questionIndex: 0 to fetch passage TTS)
+  const fetchPassageAudio = async (passageIdx) => {
+    if (!selectedExam) return;
     setIsLoading(true);
     setAudioError("");
-    // If in mock mode, reset countdown for every new question
-    if (mode === "mock") setCountdown(15);
+    setAudioReady(false); // reset audioReady when fetching new passage
     try {
-      const res = await fetch("http://localhost:4000/api/listening-question", {
+      const response = await fetch("http://localhost:4000/api/mock-listening-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ examId, questionIndex }),
+        body: JSON.stringify({
+          examId: selectedExam.id,
+          passageIndex: passageIdx,
+          questionIndex: 0
+        }),
       });
-      const data = await res.json();
-      setQuestionData(data);
-      if (data.audio && audioRef.current) {
-        // Check if the audio is directly a string or in the nested format
-        const audioUrl =
+      const data = await response.json();
+      if (data.error) {
+        console.error("API Error:", data.error);
+        setAudioError(data.error);
+      } else {
+        const fetchedAudioUrl =
           typeof data.audio === "string"
             ? data.audio
             : data.audio?.data && data.audio.data.length > 0
             ? data.audio.data[0].url
-            : "";
-        if (audioUrl) {
-          audioRef.current.src = audioUrl;
+            : "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; // fallback URL
+        setAudioUrl(fetchedAudioUrl);
+        if (fetchedAudioUrl && audioRef.current) {
+          audioRef.current.src = fetchedAudioUrl;
           audioRef.current.load();
-          audioRef.current.play().catch((err) => {
-            console.warn("Audio play error:", err);
-            setAudioError("Unable to play audio. Please try again later.");
-          });
-        } else {
-          setAudioError("Audio not available.");
+          // Auto-play is triggered via onLoadedData below.
         }
       }
-    } catch (error) {
-      console.error("Error fetching question:", error);
+    } catch (err) {
+      console.error("Error fetching passage audio:", err);
       setAudioError("Error fetching audio.");
     }
     setIsLoading(false);
   };
 
-  // Handle answer selection
-  const handleAnswerSelect = (option) => {
-    setUserAnswers((prev) => ({ ...prev, [currentQuestionIndex]: option }));
+  // When a mode is selected, load the first passage audio.
+  const handleModeSelect = async (selectedMode) => {
+    setMode(selectedMode);
+    setShowModeModal(false);
+    if (selectedExam) {
+      await fetchPassageAudio(0);
+    }
   };
 
-  // Proceed to next question (or finish test)
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < selectedExam.questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
-      fetchQuestion(selectedExam.id, nextIndex);
+  // onLoadedData: when audio loads, try to auto-play and mark as playing (for mock mode)
+  const handleAudioLoaded = () => {
+    if (mode === "mock" && audioRef.current) {
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsAudioPlaying(true);
+          setAudioReady(true);
+        })
+        .catch((err) => console.error("Audio play error on loaded data:", err));
+    }
+  };
+
+  // onEnded: when audio finishes in mock mode, mark it as ended so timer can start
+  const handleAudioEnded = () => {
+    if (mode === "mock") {
+      setIsAudioPlaying(false);
+      // Timer will now start because isAudioPlaying is false and audioReady remains true.
+    }
+  };
+
+  // Handle answer selection for a question in the current passage.
+  const handleAnswerSelect = (questionIndex, option) => {
+    // Here, we want global numbering. Compute the base index from previous passages.
+    const baseQuestionNumber = selectedExam.passages
+      .slice(0, currentPassageIndex)
+      .reduce((acc, passage) => acc + passage.questions.length, 0);
+    const globalIndex = baseQuestionNumber + questionIndex;
+    setUserAnswers((prev) => ({ ...prev, [globalIndex]: option }));
+  };
+
+  // Proceed to the next passage.
+  const handleNextPassage = async () => {
+    if (!selectedExam) return;
+    if (currentPassageIndex < selectedExam.passages.length - 1) {
+      const newPassageIndex = currentPassageIndex + 1;
+      setCurrentPassageIndex(newPassageIndex);
+      await fetchPassageAudio(newPassageIndex);
+      if (mode === "mock") {
+        setTimer(90);
+      }
     } else {
-      // Calculate score based on correct answers
+      // End of exam: calculate and log score.
       let score = 0;
-      selectedExam.questions.forEach((q, index) => {
-        if (userAnswers[index] === q.correctAnswer) {
-          score += 1;
-        }
+      let globalIndex = 0;
+      selectedExam.passages.forEach((passage) => {
+        passage.questions.forEach((q) => {
+          if (userAnswers[globalIndex] === q.correctAnswer) {
+            score += 1;
+          }
+          globalIndex++;
+        });
       });
-      // Scale score to 10 (adjust as needed)
-      const final = Math.round((score / selectedExam.questions.length) * 10);
-      setFinalScore(final);
+      console.log("Final Score:", score);
+      alert("Test Completed! Check the console for your score.");
     }
   };
 
-  // In practice mode, allow user to relisten the audio
-  const handleRelisten = () => {
+  // In Practice mode, allow the user to play/pause the audio.
+  const handlePlayPause = () => {
     if (audioRef.current) {
-      audioRef.current.play().catch((err) => {
-        console.warn("Relisten error:", err);
-        setAudioError("Unable to play audio. Please try again later.");
-      });
+      if (audioRef.current.paused) {
+        audioRef.current.play().catch((err) => {
+          console.warn("Audio play error:", err);
+          setAudioError("Unable to play audio. Please try again later.");
+        });
+      } else {
+        audioRef.current.pause();
+      }
     }
   };
 
-  const handleRestart = () => {
-    window.location.reload();
-  };
-
-  // Countdown timer effect - only active in mock mode
-  useEffect(() => {
-    if (mode !== "mock") return;
-    // Set countdown to 15 seconds at start of each question
-    setCountdown(15);
-    const timer = setInterval(() => {
-      setCountdown((prevCount) => {
-        if (prevCount <= 1) {
-          clearInterval(timer);
-          handleNextQuestion();
-          return 15; // reset for next question (if any)
-        }
-        return prevCount - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [currentQuestionIndex, mode]);
-
-  // Exam selection screen
+  // --- Exam Selection UI ---
   if (!selectedExam) {
     return (
       <div className="container my-5">
@@ -177,13 +204,13 @@ const ListeningMock = () => {
           Select a TCF Listening Exam
         </h2>
         <div className="row">
-          {allExams && allExams.length > 0 ? (
-            allExams.map((exam) => (
+          {examList && examList.length > 0 ? (
+            examList.map((exam) => (
               <div key={exam.id} className="col-md-4 mb-4">
                 <div
                   className="card h-100 shadow"
                   style={{ cursor: "pointer" }}
-                  onClick={() => handleExamSelection(exam.id)}
+                  onClick={() => setSelectedExam(exam)}
                 >
                   <div className="card-body">
                     <h4 className="card-title">{exam.title}</h4>
@@ -199,8 +226,9 @@ const ListeningMock = () => {
       </div>
     );
   }
+  // --- End Exam Selection UI ---
 
-  // Modal for mode selection (Practice vs. Mock Test)
+  // Modal for mode selection.
   const renderModeModal = () => (
     <div
       className="modal show"
@@ -228,103 +256,119 @@ const ListeningMock = () => {
     </div>
   );
 
-  // Test completion screen
-  if (finalScore !== null) {
-    return (
-      <div className="container my-5">
-        <h2 className="text-center mb-4" style={{ color: frenchBlue }}>
-          Test Completed!
-        </h2>
-        <h4 className="text-center mb-4" style={{ color: frenchRed }}>
-          Final Score: {finalScore}/10
-        </h4>
-        <div className="text-center">
-          <button
-            className="btn"
-            style={{ backgroundColor: frenchBlue, color: frenchWhite }}
-            onClick={handleRestart}
-          >
-            Restart Test
-          </button>
-        </div>
-      </div>
-    );
+  const currentPassage = selectedExam.passages[currentPassageIndex];
+  // Compute the base question number for the current passage.
+  const baseQuestionNumber = selectedExam.passages
+    .slice(0, currentPassageIndex)
+    .reduce((acc, passage) => acc + passage.questions.length, 0);
+
+  // Group questions into pairs (2 per row)
+  const questionPairs = [];
+  for (let i = 0; i < currentPassage.questions.length; i += 2) {
+    questionPairs.push(currentPassage.questions.slice(i, i + 2));
   }
 
-  // Main Listening Test UI
   return (
     <div className="container my-5">
       {showModeModal && renderModeModal()}
       {isLoading && <LoadingSpinner />}
       <div className="mb-4">
-        <button
-          className="btn"
-          style={{ backgroundColor: frenchBlue, color: frenchWhite }}
-          onClick={() => setSelectedExam(null)}
-        >
-          Back to Exam Selection
-        </button>
+        <h2 className="text-center" style={{ color: frenchBlue }}>{selectedExam.title}</h2>
+        <h4 className="text-center" style={{ color: frenchRed }}>
+          Mode: {mode === "practice" ? "Practice" : "Mock Test"}
+        </h4>
       </div>
-      <h2 className="text-center mb-4" style={{ color: frenchBlue }}>
-        Listening Exam: {selectedExam.title} ({mode === "practice" ? "Practice" : "Mock Test"})
-      </h2>
       {mode === "mock" && (
         <div className="text-center mb-3">
-          <span style={{ fontWeight: "bold" }}>Time Remaining: {countdown} s</span>
+          <span style={{ fontWeight: "bold", fontSize: "1.2rem" }}>
+            Time Remaining: {timer} s
+          </span>
+        </div>
+      )}
+      {/* In practice mode, display passage text; in mock mode, hide it */}
+      {mode !== "mock" && (
+        <div className="card p-4 mb-4">
+          <h5>
+            Passage {currentPassageIndex + 1} of {selectedExam.passages.length}
+          </h5>
+          <p style={{ fontStyle: "italic" }}>Listening Passage:</p>
+          <p>{currentPassage.passageText}</p>
         </div>
       )}
       <div className="card p-4 mb-4">
-        <h5>
-          Question {currentQuestionIndex + 1} of {selectedExam.questions.length}
-        </h5>
-        {questionData && (
-          <>
-            <p>{questionData.questionText}</p>
-            {audioError && (
-              <div className="alert alert-danger" role="alert">
-                {audioError}
-              </div>
-            )}
-            <div>
-              {questionData.options &&
-                questionData.options.map((option, idx) => (
-                  <div key={idx} className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="option"
-                      id={`option${idx}`}
-                      onChange={() => handleAnswerSelect(option)}
-                      checked={userAnswers[currentQuestionIndex] === option}
-                    />
-                    <label className="form-check-label" htmlFor={`option${idx}`}>
-                      {option}
-                    </label>
+        <h5>Questions</h5>
+        {questionPairs.map((pair, pairIndex) => (
+          <div key={pairIndex} className="row mb-3">
+            {pair.map((q, qIndex) => {
+              const localIndex = pairIndex * 2 + qIndex;
+              const globalIndex = baseQuestionNumber + localIndex; // 0-indexed global
+              return (
+                <div key={qIndex} className="col-md-6">
+                  <div className="border p-2">
+                    <p>
+                      <strong>Question {globalIndex + 1}:</strong> {q.questionText}
+                    </p>
+                    {q.options.map((option, idx) => (
+                      <div key={idx} className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name={`question-${globalIndex}`}
+                          id={`question-${globalIndex}-option-${idx}`}
+                          onChange={() => handleAnswerSelect(localIndex, option)}
+                          checked={userAnswers[globalIndex] === option}
+                        />
+                        <label className="form-check-label" htmlFor={`question-${globalIndex}-option-${idx}`}>
+                          {option}
+                        </label>
+                      </div>
+                    ))}
                   </div>
-                ))}
-            </div>
-          </>
-        )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
-      <div className="text-center mb-3">
-        {mode === "practice" && (
+      {mode === "practice" && (
+        <div className="mb-3">
           <button
             className="btn me-2"
             style={{ backgroundColor: frenchBlue, color: frenchWhite }}
-            onClick={handleRelisten}
+            onClick={handlePlayPause}
           >
-            Relisten
+            Play / Pause Audio
           </button>
-        )}
+        </div>
+      )}
+      <div className="text-center mb-3">
         <button
           className="btn"
           style={{ backgroundColor: frenchRed, color: frenchWhite }}
-          onClick={handleNextQuestion}
+          onClick={handleNextPassage}
         >
-          {currentQuestionIndex < selectedExam.questions.length - 1 ? "Next Question" : "Finish Test"}
+          {currentPassageIndex < selectedExam.passages.length - 1 ? "Next Passage" : "Finish Test"}
         </button>
       </div>
-      <audio ref={audioRef} style={{ display: "none" }} onError={() => setAudioError("Audio failed to load.")} />
+      {audioError && (
+        <div className="alert alert-danger" role="alert">
+          {audioError}
+        </div>
+      )}
+      {/* Audio element: In practice mode it's visible; in mock mode it's hidden */}
+      <audio
+        ref={audioRef}
+        autoPlay={mode === "mock"}
+        onLoadedData={handleAudioLoaded}
+        onEnded={handleAudioEnded}
+        style={{
+          display: "block",
+          width: "100%",
+          visibility: mode === "practice" ? "visible" : "hidden"
+        }}
+        controls={mode === "practice"}
+        onError={() => setAudioError("Audio failed to load.")}
+      />
     </div>
   );
 };

@@ -19,6 +19,7 @@ import ErrorPage from "./components/ErrorPage";
 import SpeakingMock from "./components/SpeakingMock";
 import HeadToHeadMatch from "./components/HeadToHeadMatch";
 import HeadToHeadWritingMatch from "./components/HeadToHead/HeadToHeadWritingMatch";
+import ListeningTraining from "./components/ListeningTraining";
 import ListeningMock from "./components/ListeningMock";
 
 // Protected route component to restrict access if not authenticated
@@ -119,6 +120,17 @@ const App = () => {
           <Navbar />
           <ProtectedRoute>
             <HeadToHeadWritingMatch />
+          </ProtectedRoute>
+        </>
+      ),
+    },
+    {
+      path: "/listeningtraining",
+      element: (
+        <>
+          <Navbar />
+          <ProtectedRoute>
+            <ListeningTraining />
           </ProtectedRoute>
         </>
       ),

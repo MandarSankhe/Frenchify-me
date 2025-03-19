@@ -10,6 +10,7 @@ const WritingMatch = require("../models/WritingMatch");
 const mongoose = require("mongoose");
 const TCFWriting = require("../models/TCFWriting"); //#20Feb2024
 const TCFSpeaking = require("../models/TCFSpeaking");
+const TCFListeningTraining = require("../models/TCFListeningTraining");
 const TCFListening = require("../models/TCFListening");
 
 require("dotenv").config();
@@ -82,12 +83,21 @@ const resolvers = {
       }
     },
 
+    tcfListeningtrainings: async () => {
+      try {
+        return await TCFListeningTraining.find();
+      } catch (error) {
+        console.error("Error fetching TCF listenings:", error);
+        throw new Error("Failed to fetch TCF listenings");
+      }
+    },
+
     tcfListenings: async () => {
       try {
         return await TCFListening.find();
       } catch (error) {
-        console.error("Error fetching TCF listenings:", error);
-        throw new Error("Failed to fetch TCF listenings");
+        console.error("Error fetching TCF Listenings:", error);
+        throw new Error("Failed to fetch TCF Listenings");
       }
     },
     

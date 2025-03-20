@@ -11,11 +11,18 @@ const {Together} =  require("together-ai");
 const multer = require("multer");
 const hfApi = process.env.HF_API;
 const TCFSpeaking = require("./models/TCFSpeaking");
+const graphqlUploadExpress = require('graphql-upload').graphqlUploadExpress;
+
 
 const together = new Together();
 
 // Initialize Express app
 const app = express();
+
+// Add the graphql-upload middleware
+app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middleware to parse JSON bodies
 app.use(express.json());
 app.use(cors({}));

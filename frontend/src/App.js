@@ -21,6 +21,8 @@ import HeadToHeadMatch from "./components/HeadToHeadMatch";
 import HeadToHeadWritingMatch from "./components/HeadToHead/HeadToHeadWritingMatch";
 import ListeningTraining from "./components/ListeningTraining";
 import ListeningMock from "./components/ListeningMock";
+import UserSettings from "./components/UserSettings";
+import Footer from "./components/Footer";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -37,6 +39,7 @@ const App = () => {
         <>
           <Navbar />
           <Home />
+          <Footer />
         </>
       ),
     },
@@ -152,6 +155,15 @@ const App = () => {
         <>
           <Navbar />
           <ForgotPassword />
+        </>
+      ),
+    },
+    {
+      path: "/user-settings",
+      element: (
+        <>
+          <Navbar />
+          <UserSettings />
         </>
       ),
     },

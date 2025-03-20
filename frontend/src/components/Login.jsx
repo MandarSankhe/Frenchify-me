@@ -11,6 +11,7 @@ const LOGIN_MUTATION = gql`
       username
       email
       languageLevel
+      profileImage
     }
   }
 `;

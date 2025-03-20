@@ -2,29 +2,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FaUser } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import { FiLogOut } from "react-icons/fi";
 
 // French flag color palette
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
-// const frenchWhite = "#FFFFFF";
 
 const Navbar = () => {
-  const { isAuthenticated, logout } = useAuth();
-  const [user, setUser] = useState(null);
+  const { isAuthenticated, logout, user } = useAuth(); // assuming your context provides `user`
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-
-  // useEffect(() => {
-  //   // Get the user from localStorage and set the state
-  //   const storedUser = localStorage.getItem('user');
-  //   if (storedUser) {
-  //     setUser(JSON.parse(storedUser));
-  //   }
-  // }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -33,21 +22,28 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   const handleLogout = () => {
     logout();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setDropdownOpen(false);
     navigate("/login");
   };
 
-  // const profilePictureUrl = user ? `http://localhost:5373${user.profilePicture}` : "/uploads/default-profile.jpg";
+  // Determine profile image URL; fallback if not available
+  const profileImageUrl =
+    user && user.profileImage
+      ? user.profileImage
+      : "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
+
+
+  console.log("userdata:", user);
 
   // Common style for NavLink
   const navLinkStyle = ({ isActive }) => ({
@@ -130,37 +126,51 @@ const Navbar = () => {
                     aria-expanded={dropdownOpen}
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                   >
-                  <FaUser />
-                    
+                    {/* Display user's profile image */}
+                    <img
+                      src={profileImageUrl}
+                      alt="Profile"
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        marginRight: "8px",
+                      }}
+                    />
                   </button>
 
-              {/* Dropdown menu */}
-              <ul
-                className={`dropdown-menu dropdown-menu-end shadow-lg ${dropdownOpen ? "show" : ""}`}
-                aria-labelledby="dropdownMenuButton"
-              >
-                <li>
-                  <button
-                    onClick={() => { navigate('/user-settings'); setDropdownOpen(false); }}
-                    className="dropdown-item d-flex align-items-center"
+                  {/* Dropdown menu */}
+                  <ul
+                    className={`dropdown-menu dropdown-menu-end shadow-lg ${dropdownOpen ? "show" : ""}`}
+                    aria-labelledby="dropdownMenuButton"
                   >
-                    {/* <FaCog className="me-2" /> */}
-                    <IoMdSettings />
-                    Settings
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => { handleLogout(); setDropdownOpen(false); }}
-                    className="dropdown-item d-flex align-items-center text-danger"
-                  >
-                    {/* <FaSignOutAlt className="me-2" /> */}
-                    <FiLogOut />
-                    Logout
-                  </button>
-                </li>
-              </ul>
-            </div>
+                    <li>
+                      <button
+                        onClick={() => {
+                          navigate("/user-settings");
+                          setDropdownOpen(false);
+                        }}
+                        className="dropdown-item d-flex align-items-center"
+                      >
+                        <IoMdSettings style={{ marginRight: "8px" }} />
+                        Settings
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setDropdownOpen(false);
+                        }}
+                        className="dropdown-item d-flex align-items-center text-danger"
+                      >
+                        <FiLogOut style={{ marginRight: "8px" }} />
+                        Logout
+                      </button>
+                    </li>
+                  </ul>
+                </div>
               </>
             ) : (
               <>

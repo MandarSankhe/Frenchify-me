@@ -12,6 +12,7 @@ const TCFWriting = require("../models/TCFWriting"); //#20Feb2024
 const TCFSpeaking = require("../models/TCFSpeaking");
 const TCFListeningTraining = require("../models/TCFListeningTraining");
 const TCFListening = require("../models/TCFListening");
+const { ImgurClient } = require('imgur');
 
 require("dotenv").config();
 const together = new Together();
@@ -20,6 +21,64 @@ const Redis = require("ioredis");
 const redis = new Redis();
 
 const PW_MUT_SECRET_KEY = process.env.PW_MUT_SECRET_KEY;
+
+// Create an instance of the Imgur client.
+const imgurClient = new ImgurClient({
+  clientId: process.env.IMGUR_CLIENT_ID
+});
+
+// Convert a stream into a buffer.
+const streamToBuffer = (stream) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+
+// Upload a single file to Imgur and return the image URL
+
+const uploadFileToImgur = async (file) => {
+  try {
+    // Properly handle Apollo Upload object structure
+    const { promise } = file;
+    const resolvedFile = await promise;
+    console.log("Resolved file content:", resolvedFile);
+
+    // Destructure from the resolved file object
+    const { createReadStream, filename, mimetype } = resolvedFile;
+    console.log("Processing file:", filename, mimetype);
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(mimetype)) {
+      throw new Error('Invalid file type. Only JPEG/PNG/GIF allowed');
+    }
+
+    // Create read stream and convert to buffer
+    const stream = createReadStream();
+    const buffer = await streamToBuffer(stream);
+    
+    // Validate file size (10MB limit)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (buffer.length > MAX_SIZE) {
+      throw new Error('File size exceeds 10MB limit');
+    }
+
+    // Convert to base64 and upload
+    const base64Image = buffer.toString("base64");
+    const response = await imgurClient.upload({
+      image: base64Image,
+      type: 'base64',
+    });
+
+    console.log("Imgur upload successful:", response.data.link);
+    return response.data.link;
+  } catch (error) {
+    console.error("Upload error:", error);
+    throw new Error(`File upload failed: ${error.message}`);
+  }
+};
 
 // Helper to generate AI feedback (similar to your /generate-feedback route)
 async function generateFeedback(question, answer) {
@@ -204,6 +263,7 @@ const resolvers = {
         username: user.username,
         email: user.email,
         languageLevel: user.languageLevel,
+        profileImage: user.profileImage,
       };
     },
 
@@ -458,7 +518,28 @@ const resolvers = {
       return matchObj;
     },
     
-
+    updateUser: async (_, { id, input, profileImage }) => {
+      try {
+        const user = await User.findById(id);
+        if (!user) throw new Error("User not found");
+    
+        // Update language level
+        if (input.languageLevel) user.languageLevel = input.languageLevel;
+    
+        // Handle file upload
+        if (profileImage) {
+          console.log("Raw profileImage input:", profileImage);
+          user.profileImage = await uploadFileToImgur(profileImage);
+        }
+    
+        await user.save();
+        return user;
+      } catch (error) {
+        console.error("Update error:", error);
+        throw new Error(`Profile update failed: ${error.message}`);
+      }
+    },
+  
   },
 };
 

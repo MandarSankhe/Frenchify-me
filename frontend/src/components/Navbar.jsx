@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaUser } from "react-icons/fa";
+import { IoMdSettings } from "react-icons/io";
+import { FiLogOut } from "react-icons/fi";
 
 // French flag color palette
 const frenchBlue = "#0055A4";
@@ -143,6 +145,7 @@ const Navbar = () => {
                     className="dropdown-item d-flex align-items-center"
                   >
                     {/* <FaCog className="me-2" /> */}
+                    <IoMdSettings />
                     Settings
                   </button>
                 </li>
@@ -152,6 +155,7 @@ const Navbar = () => {
                     className="dropdown-item d-flex align-items-center text-danger"
                   >
                     {/* <FaSignOutAlt className="me-2" /> */}
+                    <FiLogOut />
                     Logout
                   </button>
                 </li>

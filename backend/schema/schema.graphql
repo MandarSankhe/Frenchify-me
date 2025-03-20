@@ -1,3 +1,5 @@
+scalar Upload
+
 type Mutation {
   createUser(input: UserInput!): User
   login(email: String!, password: String!): User
@@ -9,6 +11,8 @@ type Mutation {
   acceptWritingMatch(matchId: ID!, opponentId: ID!): WritingMatch
   submitWritingMatchAnswer(input: SubmitWritingMatchAnswerInput!): WritingMatch
   finalizeWritingMatch(matchId: ID!): WritingMatch
+  updateUser(id: ID!, input: UserUpdateInput!, profileImage: Upload): User
+
 }
 
 input UserInput {
@@ -18,11 +22,19 @@ input UserInput {
   languageLevel: String
 }
 
+input UserUpdateInput {
+  username: String
+  email: String
+  password: String
+  languageLevel: String!
+}
+
 type User {
   id: ID!
   username: String!
   email: String!
   languageLevel: String
+  profileImage: String
   progress: Progress!
   createdAt: String!
 }

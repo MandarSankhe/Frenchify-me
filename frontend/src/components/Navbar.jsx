@@ -10,7 +10,7 @@ const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 
 const Navbar = () => {
-  const { isAuthenticated, logout, user } = useAuth(); // assuming your context provides `user`
+  const { isAuthenticated, logout, user, updateUserdata  } = useAuth(); // assuming your context provides `user`
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -130,9 +130,10 @@ const Navbar = () => {
                     <img
                       src={profileImageUrl}
                       alt="Profile"
+                      key={profileImageUrl} // Force re-render when URL changes
                       style={{
-                        width: "30px",
-                        height: "30px",
+                        width: "40px",
+                        height: "40px",
                         borderRadius: "50%",
                         objectFit: "cover",
                         marginRight: "8px",

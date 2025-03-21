@@ -12,7 +12,9 @@ const multer = require("multer");
 const hfApi = process.env.HF_API;
 const TCFSpeaking = require("./models/TCFSpeaking");
 const graphqlUploadExpress = require('graphql-upload').graphqlUploadExpress;
-
+const PDFDocument = require("pdfkit");
+const Donation = require("./models/Donation");
+const { ApiError, CheckoutPaymentIntent, Client: PPClient, Environment, LogLevel, OrdersController } = require("@paypal/paypal-server-sdk");
 
 const together = new Together();
 
@@ -39,6 +41,8 @@ async function loadGradioClient() {
   }
 }
 
+// Retrieve PayPal credentials from env
+const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
 
 // Route for generating feedback #20Feb2024
 app.post("/generate-feedback", async (req, res) => {
@@ -163,7 +167,7 @@ app.post("/api/speech-to-text", upload.single("file"), async (req, res) => {
     console.error("Error with Hugging Face API:", error);
     res.status(500).json({ error: "Failed to process the audio." });
   }
-}); // /Users/rachna/Desktop/bonjour.m4a
+}); 
 
 /**
  * Endpoint: /api/ai-response-to-speech
@@ -341,6 +345,149 @@ app.post("/api/mock-listening-question", async (req, res) => {
   } catch (error) {
     console.error("Error in mock listening question endpoint:", error);
     res.status(500).json({ error: "Failed to generate mock listening question." });
+  }
+});
+
+// Create a PayPal client (using Sandbox)
+const paypalClient = new PPClient({
+  clientCredentialsAuthCredentials: {
+    oAuthClientId: PAYPAL_CLIENT_ID,
+    oAuthClientSecret: PAYPAL_CLIENT_SECRET,
+  },
+  timeout: 0,
+  environment: Environment.Sandbox,
+  logging: {
+    logLevel: LogLevel.Info,
+    logRequest: { logBody: true },
+    logResponse: { logHeaders: true },
+  },
+});
+
+// Create the OrdersController instance
+const ordersController = new OrdersController(paypalClient);
+
+/**
+ * Create a PayPal order. TODO
+ * Here, "cart" can be used to compute the order details.
+ * For now, it returns a static order with an amount of USD 100.00.
+ */
+const createOrder = async (cart) => {
+  const orderRequest = {
+    body: {
+      intent: CheckoutPaymentIntent.CAPTURE,
+      purchaseUnits: [
+        {
+          amount: {
+            currencyCode: "USD",
+            value: "100.00",
+          },
+        },
+      ],
+    },
+    prefer: "return=minimal",
+  };
+
+  try {
+    const { body, ...httpResponse } = await ordersController.ordersCreate(orderRequest);
+    return {
+      jsonResponse: JSON.parse(body),
+      httpStatusCode: httpResponse.statusCode,
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw new Error(error.message);
+    }
+  }
+};
+
+
+// Capture a PayPal order after approval
+const captureOrder = async (orderID) => {
+  const captureRequest = {
+    id: orderID,
+    prefer: "return=minimal",
+  };
+
+  try {
+    const { body, ...httpResponse } = await ordersController.ordersCapture(captureRequest);
+    return {
+      jsonResponse: JSON.parse(body),
+      httpStatusCode: httpResponse.statusCode,
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw new Error(error.message);
+    }
+  }
+};
+
+// PayPal integration
+app.post("/api/orders", async (req, res) => {
+  try {
+    const { cart } = req.body;
+    const { jsonResponse, httpStatusCode } = await createOrder(cart);
+    res.status(httpStatusCode).json(jsonResponse);
+  } catch (error) {
+    console.error("Failed to create order:", error);
+    res.status(500).json({ error: "Failed to create order." });
+  }
+});
+
+// Capture PayPal order
+app.post("/api/orders/:orderID/capture", async (req, res) => {
+  try {
+    const { orderID } = req.params;
+    const { jsonResponse, httpStatusCode } = await captureOrder(orderID);
+    res.status(httpStatusCode).json(jsonResponse);
+  } catch (error) {
+    console.error("Failed to capture order:", error);
+    res.status(500).json({ error: "Failed to capture order." });
+  }
+});
+
+// Generate invoice
+app.get("/api/invoice/:donationId", async (req, res) => {
+  try {
+    const { donationId } = req.params;
+    const donation = await Donation.findById(donationId);
+    if (!donation) {
+      return res.status(404).json({ error: "Donation not found." });
+    }
+
+    // Set response headers for PDF
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=invoice-${donation.invoiceNumber}.pdf`);
+
+    // Create a PDF document and pipe it to the response
+    const doc = new PDFDocument();
+    doc.pipe(res);
+
+    // Design your invoice PDF
+    doc.fontSize(20).text("Donation Invoice", { align: "center" });
+    doc.moveDown();
+
+    doc.fontSize(12).text(`Invoice Number: ${donation.invoiceNumber}`);
+    doc.text(`Date: ${new Date(donation.createdAt).toLocaleDateString()}`);
+    doc.moveDown();
+
+    doc.text(`Donor Name: ${donation.fullName}`);
+    doc.text(`Email: ${donation.email}`);
+    doc.moveDown();
+
+    doc.text(`Donation Amount: $${donation.amount.toFixed(2)}`);
+    if (donation.message) {
+      doc.moveDown();
+      doc.text(`Message: ${donation.message}`);
+    }
+
+    doc.moveDown();
+    doc.text("Thank you for your donation!", { align: "center" });
+
+    // Finalize the PDF and end the stream
+    doc.end();
+  } catch (error) {
+    console.error("Error generating invoice PDF:", error);
+    res.status(500).json({ error: "Failed to generate invoice PDF." });
   }
 });
 

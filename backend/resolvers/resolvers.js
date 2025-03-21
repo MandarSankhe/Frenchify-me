@@ -8,10 +8,11 @@ const jwt = require("jsonwebtoken");
 const { Together } = require("together-ai");
 const WritingMatch = require("../models/WritingMatch");
 const mongoose = require("mongoose");
-const TCFWriting = require("../models/TCFWriting"); //#20Feb2024
+const TCFWriting = require("../models/TCFWriting");
 const TCFSpeaking = require("../models/TCFSpeaking");
 const TCFListeningTraining = require("../models/TCFListeningTraining");
 const TCFListening = require("../models/TCFListening");
+const Donation = require("../models/Donation");
 const { ImgurClient } = require('imgur');
 
 require("dotenv").config();
@@ -180,7 +181,7 @@ const resolvers = {
       }
     },
 
-  
+
     pendingMatches: async (_, { userId }) => {
       try {
         console.log("Fetching pending matches for userId:", userId);
@@ -539,6 +540,25 @@ const resolvers = {
         throw new Error(`Profile update failed: ${error.message}`);
       }
     },
+
+    // Save donation details + generate invoice number
+    createDonation: async (_, { input }) => {
+      try {
+        // Generate an invoice number using a timestamp and random value
+        const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const donation = new Donation({
+          ...input,
+          invoiceNumber,
+        });
+        await donation.save();
+        return donation;
+      } catch (err) {
+        console.error("Error creating donation:", err);
+        throw new Error("Failed to create donation");
+      }
+    },
+
+    
   
   },
 };

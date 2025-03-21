@@ -306,6 +306,44 @@ class Home extends React.Component {
             </div>
           </div>
         </div>
+
+        {/* Donation Section */}
+        <div className="row align-items-center mt-5 py-4 px-3" style={{
+          background: `linear-gradient(135deg, ${frenchBlue} 30%, ${frenchRed} 100%)`,
+          borderRadius: "8px",
+          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+          color: frenchWhite
+        }}>
+          {/* Left Column - Message & Icon */}
+          <div className="col-md-8 text-md-start text-center">
+            <h3 style={{ fontWeight: "bold" }}>Support Our Mission</h3>
+            <p style={{ fontSize: "1.1rem", marginBottom: 0 }}>
+              Help us continue creating high-quality French learning resources. Every contribution counts!
+            </p>
+          </div>
+
+          {/* Right Column - Donate Button */}
+          <div className="col-md-4 text-md-end text-center mt-3 mt-md-0">
+            <button 
+              className="btn btn-light fw-bold px-4 py-2"
+              style={{
+                color: frenchRed,
+                border: `2px solid ${frenchWhite}`,
+                borderRadius: "6px",
+                fontSize: "1.2rem",
+                transition: "0.3s"
+              }}
+              onMouseEnter={(e) => e.target.style.opacity = 0.95}
+              onMouseLeave={(e) => e.target.style.opacity = 1}
+              onClick={() => window.location.href = "/donate"} // Update when the donation page is ready
+            >
+              Donate Now ❤️
+            </button>
+          </div>
+        </div>
+
+
+
       </div>
     );
   }

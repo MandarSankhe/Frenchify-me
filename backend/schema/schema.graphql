@@ -12,7 +12,7 @@ type Mutation {
   submitWritingMatchAnswer(input: SubmitWritingMatchAnswerInput!): WritingMatch
   finalizeWritingMatch(matchId: ID!): WritingMatch
   updateUser(id: ID!, input: UserUpdateInput!, profileImage: Upload): User
-
+  createDonation(input: DonationInput!): Donation!
 }
 
 input UserInput {
@@ -81,6 +81,16 @@ type Question {
   correctAnswer: String!
 }
 
+type Donation {
+  id: ID!
+  fullName: String!
+  email: String!
+  amount: Float!
+  message: String
+  createdAt: String!
+  invoiceNumber: String!
+}
+
 enum TestModelName {
   TcfReading
   TcfWriting
@@ -144,7 +154,13 @@ input SubmitWritingMatchAnswerInput {
   userId: ID!
   answer: String!
 }
-#20Feb2024
+
+input DonationInput {
+  fullName: String!
+  email: String!
+  amount: Float!
+  message: String
+}
 
 type ValidateResetTokenResponse {
     valid: Boolean!

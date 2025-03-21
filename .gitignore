@@ -9,6 +9,7 @@ frontend/.pnp.js
 # testing
 frontend/coverage
 
+frontend/.env
 frontend/.DS_Store
 frontend/.env.local
 frontend/.env.development.local

@@ -16,7 +16,7 @@ const UPDATE_USER_MUTATION = gql`
 `;
 
 const UserSettings = () => {
-  const { user } = useAuth(); // get logged-in user from context
+  const { user, updateUserdata  } = useAuth(); // get logged-in user from context
   const navigate = useNavigate();
 
   // Set initial state only when user is available
@@ -76,28 +76,30 @@ const UserSettings = () => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
-
+  
     if (!user) {
       setErrorMessage("User not logged in.");
       return;
     }
-
-    // Log the data being sent
-    logData();
-
+  
     try {
-      await updateUser({
+      const { data } = await updateUser({
         variables: {
           id: user.id,
           input: {
             languageLevel: formData.languageLevel,
           },
-          profileImage: selectedFile, // undefined if no file is selected
+          profileImage: selectedFile,
         },
       });
-
-      setSuccessMessage("Profile updated successfully!");
-      navigate("/dashboard");
+  
+      if (data?.updateUser) {
+        // Update the AuthContext's user state with the new data
+        updateUserdata(data.updateUser);
+        
+        setSuccessMessage("Profile updated successfully!");
+        navigate("/dashboard");
+      }
     } catch (error) {
       setErrorMessage("Error updating profile. Please try again.");
       console.error("Update error:", error);

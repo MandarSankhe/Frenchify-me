@@ -32,8 +32,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
   };
 
+  const updateUserdata = (newUserData) => {
+    setUser(prev => ({
+      ...prev,
+      ...newUserData,
+      profileImage: newUserData.profileImage 
+        ? `${newUserData.profileImage}?${Date.now()}` // Cache busting
+        : prev.profileImage
+    }));
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, updateUserdata  }}>
       {children}
     </AuthContext.Provider>
   );

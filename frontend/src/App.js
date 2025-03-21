@@ -22,6 +22,7 @@ import HeadToHeadWritingMatch from "./components/HeadToHead/HeadToHeadWritingMat
 import ListeningTraining from "./components/ListeningTraining";
 import ListeningMock from "./components/ListeningMock";
 import UserSettings from "./components/UserSettings";
+import Donation from "./components/Donation";
 import Footer from "./components/Footer";
 
 // Protected route component to restrict access if not authenticated
@@ -173,6 +174,16 @@ const App = () => {
         <>
           <Navbar />
           <ResetPassword />
+        </>
+      ),
+    },
+    {
+      path: "/donate",
+      element: (
+        <>
+          <Navbar />
+          <Donation />
+          <Footer />
         </>
       ),
     },

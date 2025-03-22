@@ -87,6 +87,12 @@ type Donation {
   email: String!
   amount: Float!
   message: String
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  phoneNumber: String
   createdAt: String!
   invoiceNumber: String!
 }
@@ -160,6 +166,12 @@ input DonationInput {
   email: String!
   amount: Float!
   message: String
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  phoneNumber: String
 }
 
 type ValidateResetTokenResponse {

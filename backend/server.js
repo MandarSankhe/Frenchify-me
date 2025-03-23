@@ -454,43 +454,129 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       return res.status(404).json({ error: "Donation not found." });
     }
 
-    // Set response headers for PDF
+    const frenchBlue = "#0055A4";
+    const frenchRed = "#EF4135";
+    const fadedFrenchRed = "#FF9999";
+
+    // PDF response headers
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename=invoice-${donation.invoiceNumber}.pdf`);
 
-    // Create a PDF document and pipe it to the response
-    const doc = new PDFDocument();
+    // Create PDFKit doc
+    const doc = new PDFDocument({ margin: 50 });
     doc.pipe(res);
 
-    // Design your invoice PDF
-    doc.fontSize(20).text("Donation Invoice", { align: "center" });
-    doc.moveDown();
+    // 1) Company Info + Logo
+    const logoPath = path.join(__dirname, "../frontend/public/Logo.png");
+    doc
+      .image(logoPath, 50, 45, { width: 70 })
+      .fontSize(16)
+      .text("FrenchifyMe Team", 130, 50)
+      .fontSize(10)
+      .text("200 University Ave W\nWaterloo, Ontario N2L 3G1", 130, 70)
+      .moveDown();
 
-    doc.fontSize(12).text(`Invoice Number: ${donation.invoiceNumber}`);
-    doc.text(`Date: ${new Date(donation.createdAt).toLocaleDateString()}`);
-    doc.moveDown();
+    // 2) "DONATION INVOICE" in French Blue
+    doc
+      .moveDown()
+      .fontSize(20)
+      .fillColor(frenchBlue)
+      .text("DONATION INVOICE", { align: "right" })
+      .moveDown();
 
-    doc.text(`Donor Name: ${donation.fullName}`);
-    doc.text(`Email: ${donation.email}`);
-    doc.moveDown();
+    // 3) Colored "Invoice no." in Bold + Red Outline
+    // Capture the current Y offset
+    const invoiceY = doc.y;
 
-    doc.text(`Donation Amount: $${donation.amount.toFixed(2)}`);
-    if (donation.message) {
-      doc.moveDown();
-      doc.text(`Message: ${donation.message}`);
-    }
+    // Draw an outline rectangle behind the invoice info
+    doc
+      .strokeColor(frenchRed)
+      .lineWidth(1)
+      .rect(370, invoiceY - 4, 185, 16)
+      .stroke();
 
-    doc.moveDown();
-    doc.text("Thank you for your donation!", { align: "center" });
+    // Bold + red for "Invoice no."
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .fillColor(frenchRed)
+      .text(`Invoice no: ${donation.invoiceNumber}`, 380, invoiceY);
+    // Normal font & black color for the invoice date
+    doc
+      .font("Helvetica")
+      .fillColor("black")
+      .text(`Invoice date: ${new Date(donation.createdAt).toLocaleDateString()}`, 380, doc.y + 15)
+      .moveDown();
 
-    // Finalize the PDF and end the stream
+    // 4) Table Headers
+    doc.moveDown(1);
+    let tableTop = doc.y;
+    const tableLeft = 50;
+
+    // Optionally color the headers in French Blue:
+    doc.fontSize(10).fillColor(frenchBlue).text("QTY", tableLeft, tableTop);
+    doc.text("Description", tableLeft + 50, tableTop);
+    doc.text("Unit Price", tableLeft + 250, tableTop, { width: 90, align: "right" });
+    doc.text("Amount", tableLeft + 350, tableTop, { width: 90, align: "right" });
+
+    // Horizontal line below headers
+    doc
+      .moveTo(tableLeft, tableTop + 15)
+      .lineTo(550, tableTop + 15)
+      .stroke();
+
+    // 5) Table Row(s) in black
+    const rowY = tableTop + 30;
+    doc.fontSize(10).fillColor("black").text("1", tableLeft, rowY); // QTY
+    doc.text("Monetary Donation", tableLeft + 50, rowY); // Description
+    doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 250, rowY, {
+      width: 90,
+      align: "right",
+    });
+    doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 350, rowY, {
+      width: 90,
+      align: "right",
+    });
+
+    // 6) Subtotal, Total
+    const subtotalY = rowY + 30;
+    doc.fillColor(fadedFrenchRed).text("Subtotal", tableLeft + 250, subtotalY, {
+      width: 90,
+      align: "right",
+    });
+    doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 350, subtotalY, {
+      width: 90,
+      align: "right",
+    });
+    
+    const totalY = subtotalY + 15;
+    const total = donation.amount; // Total equals donation amount since tax is removed
+    doc.fillColor("black").text("Total (USD)", tableLeft + 250, totalY, {
+      width: 90,
+      align: "right",
+    });
+    doc.text(`$${total.toFixed(2)}`, tableLeft + 350, totalY, {
+      width: 90,
+      align: "right",
+    });
+
+    // Extra space before the thank you note
+    doc.moveDown(2);
+
+    // 7) Thank you note
+    doc
+      .fontSize(10)
+      .fillColor("gray")
+      .text("Thank you for your donation!", { align: "center" })
+      .moveDown(1);
+
+    // 8) End the PDF
     doc.end();
   } catch (error) {
     console.error("Error generating invoice PDF:", error);
     res.status(500).json({ error: "Failed to generate invoice PDF." });
   }
 });
-
 
 // Load and merge GraphQL schema files
 const typesArray = loadFilesSync(path.join(__dirname, "./schema"), {

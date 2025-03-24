@@ -13,6 +13,8 @@ const TCFSpeaking = require("../models/TCFSpeaking");
 const TCFListeningTraining = require("../models/TCFListeningTraining");
 const TCFListening = require("../models/TCFListening");
 const Donation = require("../models/Donation");
+const ImageExam = require("../models/ImageExam");
+const ImageMatch = require("../models/ImageMatch");
 const { ImgurClient } = require('imgur');
 
 require("dotenv").config();
@@ -248,8 +250,29 @@ const resolvers = {
       return matchObj;
     },
 
-
     // #20Feb2024
+
+    imageExams: async () => await ImageExam.find(),
+    pendingImageMatches: async (_, { userId }) => {
+      return await ImageMatch.find({
+        $or: [{ initiator: userId }, { opponent: userId }],
+        status: { $in: ["pending", "active"] }
+      }).populate("initiator", "username")
+      .populate("opponent", "username");;
+    },
+    imageMatch: async (_, { matchId }) => {
+      return await ImageMatch.findById(matchId).populate("initiator", "username")
+      .populate("opponent", "username");;
+    },
+    userImageMatches: async (_, { userId }) => {
+      return await ImageMatch.find({
+        $or: [{ initiator: userId }, { opponent: userId }],
+        status: "completed"
+      })
+      .sort({ createdAt: -1 })
+      .populate("initiator", "username")
+      .populate("opponent", "username");
+    },
   },
 
   Mutation: {
@@ -517,6 +540,97 @@ const resolvers = {
       console.log("Finalized match:", matchObj);
       
       return matchObj;
+    },
+
+    createImageMatch: async (_, { input }) => {
+      console.log("Creating image match with input:", input);
+      const exam = await ImageExam.findById(input.examId);
+      if (!exam) throw new Error("Exam not found");
+      const opponent = await User.findOne({ username: input.opponentUsername });
+      if (!opponent) throw new Error("Opponent not found");
+      console.log("Creating image match with opponent:", opponent.username);
+    
+      const newMatch = new ImageMatch({
+        initiator: input.initiatorId,
+        examId: input.examId,
+        examTitle: exam.title,
+        //currentQuestion: 0,
+        initiatorCurrent: 0,
+        opponentCurrent: 0,
+        questions: exam.questions.map(q => ({
+          imageUrl: q.imageUrl,
+          correctWord: q.correctWord,
+          revealedLetters: q.revealedLetters
+        })),
+        opponent: opponent._id,
+        status: "pending", 
+        totalScore: { initiator: 0, opponent: 0 }
+      });
+      
+      await newMatch.save();
+      return ImageMatch.findById(newMatch._id)
+        .populate("initiator", "username")
+        .populate("opponent", "username");
+    },
+
+    acceptImageMatch: async (_, { matchId, opponentId }) => {
+      const match = await ImageMatch.findById(matchId);
+      if (!match) throw new Error("Match not found");
+      if (match.opponent.toString() !== opponentId) {
+        throw new Error("Not authorized to accept this match");
+      }
+      match.status = "active";
+      await match.save();
+      await match.populate("initiator", "username");
+      await match.populate("opponent", "username");
+      return match;
+    },
+
+    submitImageAnswer: async (_, { input }) => {
+      const match = await ImageMatch.findById(input.matchId)
+        .populate("initiator", "username")
+        .populate("opponent", "username");
+    
+      if (!match) throw new Error("Match not found");
+      
+      const isInitiator = match.initiator._id.equals(input.userId);
+      const currentUserField = isInitiator ? 'initiatorCurrent' : 'opponentCurrent';
+      const currentQuestionIndex = match[currentUserField];
+    
+      // Validate question index
+      if (input.questionIndex !== currentQuestionIndex) {
+        throw new Error("Invalid question submission");
+      }
+    
+      const question = match.questions[currentQuestionIndex];
+      const correct = question.correctWord.toLowerCase() === input.answer.toLowerCase();
+      const score = correct ? 10 : 0;
+    
+      // Update answers and scores
+      if (isInitiator) {
+        question.initiatorAnswer = input.answer;
+        question.initiatorScore = score;
+        match.totalScore.initiator += score;
+      } else {
+        question.opponentAnswer = input.answer;
+        question.opponentScore = score;
+        match.totalScore.opponent += score;
+      }
+    
+      // Move only the submitting user to next question
+      match[currentUserField] += 1;
+    
+      // Check if both players have completed all questions
+      const bothCompleted = 
+        match.initiatorCurrent >= match.questions.length &&
+        match.opponentCurrent >= match.questions.length;
+    
+      if (bothCompleted) {
+        match.status = "completed";
+      }
+    
+      await match.save();
+      return match;
     },
     
     updateUser: async (_, { id, input, profileImage }) => {

@@ -6,6 +6,16 @@ import LoadingSpinner from "../LoadingSpinner";
 import { useAuth } from "../../context/AuthContext";
 
 // --- GraphQL definitions ---
+
+const GET_USERS = gql`
+    query GetUsers {
+        users {
+            id
+            username
+        }
+    }
+`;
+
 const GET_TCF_WRITINGS = gql`
   query GetTCFWritings {
     tcfWritings {
@@ -271,6 +281,9 @@ const HeadToHeadWritingMatch = () => {
 
   // Fetch exams
   const { data: examData, loading: examLoading } = useQuery(GET_TCF_WRITINGS);
+
+    const [selectedOpponent, setSelectedOpponent] = useState("");
+    const { data: usersData, loading: usersLoading, error: usersError } = useQuery(GET_USERS);
 
   // Fetch pending matches
   const { data: pendingData, loading: pendingLoading, refetch: refetchPending } = useQuery(
@@ -538,13 +551,23 @@ const HeadToHeadWritingMatch = () => {
       <div className="card p-3 mb-4">
         <h4>Create Match Request</h4>
         <div className="mb-3">
-          <input
-            type="text"
-            placeholder="Opponent Username"
-            value={opponentUsername}
-            onChange={(e) => setOpponentUsername(e.target.value)}
-            className="form-control mb-2"
-          />
+        <label className="form-label">Opponent:</label>
+            {usersLoading ? (
+              <p>Loading users...</p>
+            ) : usersError ? (
+              <p>Error loading users.</p>
+            ) : (
+              <select className="form-select" value={selectedOpponent} onChange={(e) => setSelectedOpponent(e.target.value)}>
+                <option value="">-- Select Opponent --</option>
+                {usersData?.users
+                  .filter(u => u.id !== user.id) // Optionally exclude yourself
+                  .map(u => (
+                    <option key={u.id} value={u.username}>
+                      {u.username}
+                    </option>
+                ))}
+              </select>
+            )}
           <label>Select Exam:</label>
           <select
             className="form-select mb-2"
@@ -560,7 +583,7 @@ const HeadToHeadWritingMatch = () => {
               ))}
           </select>
         </div>
-        <button onClick={handleCreateMatch} className="btn btn-primary">
+        <button onClick={handleCreateMatch} disabled={!selectedExam || !selectedOpponent} className="btn btn-primary">
           Send Match Request
         </button>
       </div>

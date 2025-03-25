@@ -97,6 +97,7 @@ const styles = {
     borderRadius: "8px",
     boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
   },
+  
 };
 
 class Home extends React.Component {
@@ -250,62 +251,31 @@ class Home extends React.Component {
 
         {/* Contact Us */}
         <div>
-          <h2 style={styles.sectionHeading}>Contact Us</h2>
-          <div className="row justify-content-center">
-            <div className="col-md-8">
-              <form style={styles.contactForm}>
-                <div className="mb-3">
-                  <label
-                    htmlFor="name"
-                    style={styles.contactLabel}
-                    className="form-label"
-                  >
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    className="form-control"
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label
-                    htmlFor="email"
-                    style={styles.contactLabel}
-                    className="form-label"
-                  >
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    className="form-control"
-                    placeholder="Your email"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label
-                    htmlFor="message"
-                    style={styles.contactLabel}
-                    className="form-label"
-                  >
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    className="form-control"
-                    rows="4"
-                    placeholder="Your message"
-                  ></textarea>
-                </div>
-                <button type="submit" style={styles.contactBtn} className="btn">
-                  Send Message
-                </button>
-              </form>
+      <h2 style={styles.sectionHeading}>Contact Us</h2>
+      <div className="row justify-content-center">
+        <div className="col-md-8">
+          <form 
+            style={styles.contactForm}
+            action="https://getform.io/f/bdrnxnjb" 
+            method="POST"
+          >
+            <div className="mb-3">
+              <label htmlFor="name" style={styles.contactLabel} className="form-label">Name</label>
+              <input type="text" name="name" id="name" className="form-control" placeholder="Your name" required />
             </div>
-          </div>
+            <div className="mb-3">
+              <label htmlFor="email" style={styles.contactLabel} className="form-label">Email</label>
+              <input type="email" name="email" id="email" className="form-control" placeholder="Your email" required />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="message" style={styles.contactLabel} className="form-label">Message</label>
+              <textarea name="message" id="message" className="form-control" rows="4" placeholder="Your message" required></textarea>
+            </div>
+            <button type="submit" style={styles.contactBtn} className="btn">Send Message</button>
+          </form>
         </div>
+      </div>
+    </div>
 
         {/* Donation Section */}
         <div className="row align-items-center mt-5 py-4 px-3" style={{

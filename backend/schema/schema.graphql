@@ -13,6 +13,11 @@ type Mutation {
   finalizeWritingMatch(matchId: ID!): WritingMatch
   updateUser(id: ID!, input: UserUpdateInput!, profileImage: Upload): User
   createDonation(input: DonationInput!): Donation!
+
+  createImageMatch(input: CreateImageMatchInput!): ImageMatch
+  acceptImageMatch(matchId: ID!, opponentId: ID!): ImageMatch
+  submitImageAnswer(input: SubmitImageAnswerInput!): ImageMatch
+  finalizeImageMatch(matchId: ID!): ImageMatch
 }
 
 input UserInput {
@@ -87,6 +92,12 @@ type Donation {
   email: String!
   amount: Float!
   message: String
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  phoneNumber: String
   createdAt: String!
   invoiceNumber: String!
 }
@@ -160,6 +171,12 @@ input DonationInput {
   email: String!
   amount: Float!
   message: String
+  street: String
+  city: String
+  state: String
+  postalCode: String
+  country: String
+  phoneNumber: String
 }
 
 type ValidateResetTokenResponse {
@@ -202,6 +219,69 @@ type ListeningQuestion {
   correctAnswer: String!
 }
 
+# Image Exam start
+type ImageExam {
+  id: ID!
+  title: String!
+  level: String!
+  questions: [ImageQuestion!]!
+  createdAt: String!
+}
+
+type ImageQuestion {
+  imageUrl: String!
+  correctWord: String!
+  revealedLetters: [RevealedLetter!]!
+  hints: [String!]!
+}
+
+type RevealedLetter {
+  position: Int!
+  char: String!
+}
+
+type ImageMatch {
+  id: ID!
+  examId: ID!
+  examTitle: String!
+  initiatorCurrent: Int!
+  opponentCurrent: Int!
+  questions: [ImageMatchQuestion!]!
+  initiator: User!
+  opponent: User!
+  status: String!
+  totalScore: MatchScore!
+  createdAt: String!
+}
+
+type ImageMatchQuestion {
+  imageUrl: String!
+  correctWord: String!
+  revealedLetters: [RevealedLetter!]!
+  initiatorAnswer: String
+  opponentAnswer: String
+  initiatorScore: Int
+  opponentScore: Int
+}
+
+type MatchScore {
+  initiator: Int!
+  opponent: Int!
+}
+
+input CreateImageMatchInput {
+  initiatorId: ID!
+  opponentUsername: String!
+  examId: ID!
+}
+
+input SubmitImageAnswerInput {
+  matchId: ID!
+  userId: ID!
+  questionIndex: Int!
+  answer: String!
+}
+# Image Exam end
 
 type Query {
   users: [User]
@@ -214,4 +294,8 @@ type Query {
   tcfSpeakings: [TCFSpeaking]!
   tcfListeningtrainings: [TCFListeningTraining]!
   tcfListenings: [TCFListening]! 
+  imageExams: [ImageExam!]!
+  pendingImageMatches(userId: ID!): [ImageMatch!]!
+  imageMatch(matchId: ID!): ImageMatch
+  userImageMatches(userId: ID!): [ImageMatch!]!
 }

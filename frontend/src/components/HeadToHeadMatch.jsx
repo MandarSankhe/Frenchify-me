@@ -18,7 +18,7 @@ const HeadToHeadMatch = () => {
       title: "Puzzle Exam",
       image: "https://media.istockphoto.com/id/1746657656/vector/confrontation.jpg?s=612x612&w=0&k=20&c=-Uq9mVh8v3VzctOu2kKeOVZr9dv7KiOsPDCRojMR8eE=", 
       description: "Solve puzzles and outsmart your opponent.",
-      route: "/puzzle-match",
+      route: "/image-match",
     },
     {
       title: "Quiz Exam",

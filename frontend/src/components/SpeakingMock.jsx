@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { ReactMic } from "react-mic";
 import LoadingSpinner from "./LoadingSpinner";
 import { FaRedo, FaPlay, FaPause } from "react-icons/fa";
+import TalkingHead from "./TalkingHead";
 // import { FaRedo, FaPlay, FaPause } from "../../node_modules/react-icons/fa";
 
 // Use the same exam image logic as in your writing mock.
@@ -525,6 +526,7 @@ const SpeakingMock = () => {
         Speaking Exam: {selectedExam.topic}
       </h2>
   
+      <TalkingHead audioRef={audioRef} />
       <div className="chat-container mb-4" style={{ maxHeight: "300px", overflowY: "auto" }}>
         {conversationHistory.length > 0 &&
           conversationHistory

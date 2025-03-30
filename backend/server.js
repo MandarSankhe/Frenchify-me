@@ -22,7 +22,7 @@ const together = new Together();
 const app = express();
 
 // Add the graphql-upload middleware
-app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+//app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middleware to parse JSON bodies
@@ -469,11 +469,11 @@ app.get("/api/invoice/:donationId", async (req, res) => {
     // 1) Company Info + Logo
     const logoPath = path.join(__dirname, "../frontend/public/Logo.png");
     doc
-      .image(logoPath, 50, 45, { width: 70 })
+      .image(logoPath, 50, 45, { width: 90 })
       .fontSize(16)
-      .text("FrenchifyMe Team", 130, 50)
+      .text("Frenchify Team", 150, 60)
       .fontSize(10)
-      .text("200 University Ave W\nWaterloo, Ontario N2L 3G1", 130, 70)
+      .text("200 University Ave W\nWaterloo, Ontario N2L 3G1", 150, 80)
       .moveDown();
 
     // 2) "DONATION INVOICE" in French Blue
@@ -508,15 +508,45 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       .text(`Invoice date: ${new Date(donation.createdAt).toLocaleDateString()}`, 380, doc.y + 15)
       .moveDown();
 
-    // 4) Table Headers
-    doc.moveDown(1);
+    // 4) Donor details to the left
+    //doc.moveDown(2); // Move down a bit from the invoice date
+    const donorInfoX = 50; // Same as x-position for company logo
+    let donorInfoY = doc.y; // Capture the current y position
+
+    // Donor details heading
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .fillColor("black")
+      .text("Donor Information", donorInfoX, donorInfoY);
+
+    // Switch back to a normal font style
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor("black")
+      .moveDown(0.5);
+
+    donorInfoY = doc.y;
+
+    // Display each donor field
+    doc.text(`${donation.fullName}`, donorInfoX, donorInfoY);
+    doc.text(`${donation.street}`, donorInfoX);
+    doc.text(`${donation.city}, ${donation.state}`, donorInfoX);
+    doc.text(`${donation.postalCode}`, donorInfoX);
+    doc.text(`${donation.country}`, donorInfoX);
+    doc.moveDown(0.5);
+    doc.text(`Donor email: ${donation.email}`, donorInfoX);
+
+    // 5) Table Headers
+    doc.moveDown(3);
     let tableTop = doc.y;
     const tableLeft = 50;
 
     // Optionally color the headers in French Blue:
     doc.fontSize(10).fillColor(frenchBlue).text("QTY", tableLeft, tableTop);
     doc.text("Description", tableLeft + 50, tableTop);
-    doc.text("Unit Price", tableLeft + 250, tableTop, { width: 90, align: "right" });
+    doc.text("Currency", tableLeft + 250, tableTop, { width: 90, align: "right" });
     doc.text("Amount", tableLeft + 350, tableTop, { width: 90, align: "right" });
 
     // Horizontal line below headers
@@ -525,20 +555,20 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       .lineTo(550, tableTop + 15)
       .stroke();
 
-    // 5) Table Row(s) in black
+    // 6) Table Row(s) in black
     const rowY = tableTop + 30;
     doc.fontSize(10).fillColor("black").text("1", tableLeft, rowY); // QTY
     doc.text("Monetary Donation", tableLeft + 50, rowY); // Description
-    doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 250, rowY, {
+    doc.text(`USD`, tableLeft + 250, rowY, {
       width: 90,
       align: "right",
-    });
+    }); // Currency
     doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 350, rowY, {
       width: 90,
       align: "right",
-    });
+    }); // Amount donated
 
-    // 6) Subtotal, Total
+    // 7) Subtotal, Total
     const subtotalY = rowY + 30;
     doc.fillColor(fadedFrenchRed).text("Subtotal", tableLeft + 250, subtotalY, {
       width: 90,
@@ -549,8 +579,8 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       align: "right",
     });
     
-    const totalY = subtotalY + 15;
-    const total = donation.amount; // Total equals donation amount since tax is removed
+    const totalY = subtotalY + 20;
+    const total = donation.amount; // Total equals donation amount since no tax
     doc.fillColor("black").text("Total (USD)", tableLeft + 250, totalY, {
       width: 90,
       align: "right",
@@ -563,14 +593,42 @@ app.get("/api/invoice/:donationId", async (req, res) => {
     // Extra space before the thank you note
     doc.moveDown(2);
 
-    // 7) Thank you note
+    // 8) Thank you note
     doc
       .fontSize(10)
       .fillColor("gray")
       .text("Thank you for your donation!", { align: "center" })
       .moveDown(1);
 
-    // 8) End the PDF
+    // 9) Footer
+    const footerY = doc.page.height - 60;
+    const lineY = footerY - 10;
+    const leftMargin = 50;
+    const rightMargin = doc.page.width - 50;
+
+    // Draw a red line above the footer text
+    doc
+      .strokeColor("red")
+      .lineWidth(1)
+      .moveTo(leftMargin, lineY)
+      .lineTo(rightMargin, lineY)
+      .stroke();
+
+    // Footer text in two parts (partially hyperlinked):
+    doc
+      .fontSize(8)
+      .fillColor("gray")
+      .text("Frenchify Team - ", leftMargin, footerY, {
+        continued: true // stay on the same line
+      })
+      .fillColor("blue")
+      .text("Visit our website", {
+        link: "https://frenchify-me-6yik.vercel.app/",
+        underline: true,
+        continued: false
+      });
+
+    // 10) End the PDF
     doc.end();
   } catch (error) {
     console.error("Error generating invoice PDF:", error);
@@ -594,29 +652,24 @@ async function startServer() {
   await server.start();
   server.applyMiddleware({ app, path: "/graphql" });
 
-  const PORT = process.env.PORT || 4000;
-
-  let isConnected;
-  async function connectToDatabase() {
-    if (isConnected) return;
-    try {
-      const db = await mongoose.connect(process.env.MONGO_URI, {
-        useUnifiedTopology: true,
-        useNewUrlParser: true,
-        serverSelectionTimeoutMS: 5000 // Timeout after 5 seconds if connection fails
-      });
-      isConnected = db.connections[0].readyState;
-      console.log("Connected to MongoDB successfully!");
-    } catch (err) {
-      console.error("Error connecting to MongoDB:", err);
-      throw err;
-    }
-  }
-  await connectToDatabase();
-
-  app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/graphql`);
+  // Connect to MongoDB
+  await mongoose.connect(process.env.MONGO_URI, {
+    useUnifiedTopology: true,
+    useNewUrlParser: true,
+    serverSelectionTimeoutMS: 5000
   });
+  console.log("Connected to MongoDB successfully!");
+
+  // For local development: start listening if not running on Lambda
+  if (!process.env.LAMBDA_TASK_ROOT) {
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}/graphql`);
+    });
+  }
 }
 
 startServer().catch((err) => console.log(err));
+
+// Export the app for Lambda usage
+module.exports = app;

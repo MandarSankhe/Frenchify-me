@@ -9,6 +9,8 @@ const ReadingMock = () => {
   const frenchRed = "#EF4135";
   const frenchWhite = "#FFFFFF";
 
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+
   const { user } = useAuth();
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
@@ -113,7 +115,7 @@ const ReadingMock = () => {
         }
       `;
       try {
-        const response = await fetch("http://localhost:4000/graphql", {
+        const response = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
@@ -240,7 +242,7 @@ const ReadingMock = () => {
   };
 
   try {
-    const response = await fetch("http://localhost:4000/graphql", {
+    const response = await fetch(GRAPHQL_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: mutation, variables }),

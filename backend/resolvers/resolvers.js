@@ -353,7 +353,7 @@ const resolvers = {
                   style="width: 100px; height: auto;">
             </div>
           `
-        };
+        }; // TODO rp: change localhost:3000 for prod (use .env for prod+local)
     
         const info = await transporter.sendMail(mailOptions);
         console.log("Email sent:", info.response);

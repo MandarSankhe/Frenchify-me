@@ -24,17 +24,11 @@ const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
 
-// Scoring function
-const calculateScore = (userResponses) => {
-  // Each response gets 3 points
-
-  const total = Object.values(userResponses).reduce((sum) => sum + 3, 0);
-
-  // Maximum possible: 9 responses * 3 = 27, scale to 10
-  return Math.round((total / 27) * 10);
-};
-
 const SpeakingMock = () => {
+
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
+
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
 
@@ -76,7 +70,7 @@ const SpeakingMock = () => {
         }
       `;
       try {
-        const res = await fetch("http://localhost:4000/graphql", {
+        const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
@@ -149,7 +143,7 @@ const SpeakingMock = () => {
   const fetchDBQuestion = async (mainQNumber) => {
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/initial-question", {
+      const res = await fetch(`${API_ENDPOINT}/api/initial-question`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: selectedExam.topic, questionNumber: mainQNumber }),
@@ -177,6 +171,51 @@ const SpeakingMock = () => {
     setIsLoading(false);
   };
 
+  // Scoring function
+  const calculateScore = async (userResponses, conversationHistory) => {
+    try {
+
+      // Extract AI responses from the conversation history
+      const aiResponses = conversationHistory
+      .filter((msg) => msg.role === "ai")
+      .map((msg) => msg.text)
+      .join("\n");
+      
+      const response = await fetch(`${API_ENDPOINT}/api/calculate-speaking-score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userResponses, topic: selectedExam.topic, aiResponses }),
+      });
+      const data = await response.json();
+      return data.score;
+    } catch (error) {
+      console.error("Error calculating speaking score:", error);
+      return null;
+    }
+  };
+
+  // Generate final feedback
+  const generateFinalFeedback = async (userResponses, conversationHistory) => {
+    // Extract AI responses from conversationHistory
+    const aiResponses = conversationHistory
+      .filter(msg => msg.role === "ai")
+      .map(msg => msg.text)
+      .join("\n");
+  
+    try {
+      const response = await fetch(`${API_ENDPOINT}/api/generate-speaking-final-feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userResponses, topic: selectedExam.topic, aiResponses }),
+      });
+      const data = await response.json();
+      return data.feedback;
+    } catch (error) {
+      console.error("Error generating final feedback:", error);
+      return null;
+    }
+  };
+  
   // Start Conversation Screen (before any conversation)
   if (selectedExam && conversationHistory.length === 0) {
     return (
@@ -262,7 +301,7 @@ const SpeakingMock = () => {
       formData.append("file", recordedBlob.blob);
 
       // Ensure the speech is recognized in French
-      const speechResponse = await fetch("http://localhost:4000/api/speech-to-text", {
+      const speechResponse = await fetch(`${API_ENDPOINT}/api/speech-to-text`, {
         method: "POST",
         body: formData,
       });
@@ -288,7 +327,7 @@ const SpeakingMock = () => {
         console.log("#rp: current DB question no: ", currentMainQuestionRef.current);
         // If less than 2 AI follow-ups for the current DB question, generate the next AI follow-up
         if (followupCountRef.current < 2) {
-          const aiResponseRes = await fetch("http://localhost:4000/api/ai-response-to-speech", {
+          const aiResponseRes = await fetch(`${API_ENDPOINT}/api/ai-response-to-speech`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -332,7 +371,7 @@ const SpeakingMock = () => {
           console.log("Auto-fetching next DB question: mainQuestion", currentMainQuestionRef.current);
           setIsLoading(true);
           try {
-            const nextRes = await fetch("http://localhost:4000/api/initial-question", {
+            const nextRes = await fetch(`${API_ENDPOINT}/api/initial-question`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ topic: selectedExam.topic, questionNumber: currentMainQuestionRef.current }),
@@ -381,12 +420,15 @@ const SpeakingMock = () => {
   };
 
   // handleFinishTest: When currentMainQuestion === 3 and followupCount === 2 (Q9 reached)
-  const handleFinishTest = () => {
-    const score = calculateScore(userResponses);
+  const handleFinishTest = async () => {
+    setIsLoading(true);
+    const score = await calculateScore(userResponses, conversationHistory);
+    const finalFeedbackApi = await generateFinalFeedback(userResponses, conversationHistory);
     setFinalScore(score);
-    setFinalFeedback("Final Feedback: " + JSON.stringify(userResponses)); // TODO rachna
+    setFinalFeedback("Final Feedback: " + finalFeedbackApi);
+    setIsLoading(false);
 
-    // Save user score to database
+    // Save user score to database: TODO Mandar/Rachna
     
   };
 
@@ -660,9 +702,4 @@ const SpeakingMock = () => {
 };
 
 export default SpeakingMock;
-
-// TODO rachna Scoring: Extract score to a variable
-// When test is over, disable speaking
-// test scoring (1/10)
-// Replay, pause button, check if speed can be configured
 

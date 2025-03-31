@@ -1,5 +1,6 @@
 backend/node_modules
 backend/.env
+backend/.env.production
 backend/scripts
 backend/frenchify_api.zip
 .DS_Store
@@ -12,6 +13,7 @@ frontend/.pnp.js
 frontend/coverage
 
 frontend/.env
+frontend/.env.production
 frontend/.DS_Store
 frontend/.env.local
 frontend/.env.development.local

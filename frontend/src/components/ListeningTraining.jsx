@@ -21,11 +21,14 @@ const ListeningTraining = () => {
 
   const audioRef = useRef(null);
 
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
+
   // Fetch listening exams via GraphQL
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        const res = await fetch("http://localhost:4000/graphql", {
+        const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -79,7 +82,7 @@ const ListeningTraining = () => {
     // If in mock mode, reset countdown for every new question
     if (mode === "mock") setCountdown(15);
     try {
-      const res = await fetch("http://localhost:4000/api/listening-question", {
+      const res = await fetch(`${API_ENDPOINT}/api/listening-question`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ examId, questionIndex }),

@@ -15,6 +15,8 @@ ChartJS.register(
   ArcElement
 );
 
+const GRAPHQL_URI = process.env.REACT_APP_API_URL || 'http://localhost:4000/graphql';
+
 const Dashboard = () => {
   const { user } = useAuth(); // Get logged-in user's data from AuthContext
   const [testHistories, setTestHistories] = useState([]);
@@ -35,7 +37,7 @@ const Dashboard = () => {
       `;
       const variables = { userId: user.id };
       try {
-        const response = await fetch("http://localhost:4000/graphql", {
+        const response = await fetch(GRAPHQL_URI, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query, variables }),

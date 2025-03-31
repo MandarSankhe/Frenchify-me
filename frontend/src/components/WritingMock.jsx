@@ -150,6 +150,9 @@ const WritingMock = () => {
   // Create a ref for the on-screen keyboard
   const keyboardRef = useRef(null);
 
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
+
   // Handle input from on-screen keyboard
   const handleKeyboardChange = (input) => {
     setKeyboardInput(input);
@@ -189,7 +192,7 @@ const WritingMock = () => {
         }
       `;
       try {
-        const res = await fetch("http://localhost:4000/graphql", {
+        const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
@@ -229,7 +232,7 @@ const WritingMock = () => {
         Conclude with a score out of 10. Above 4 sections are must.
       `;
 
-      const res = await fetch("http://localhost:4000/generate-feedback", {
+      const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),

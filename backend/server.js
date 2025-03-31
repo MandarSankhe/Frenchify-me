@@ -44,6 +44,14 @@ async function loadGradioClient() {
 // Retrieve PayPal credentials from env
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
 
+// Remove "/prod" from the URL if present (workaround)
+app.use((req, res, next) => {
+  if (req.url.startsWith('/prod')) {
+    req.url = req.url.slice(5); // Remove the first 5 characters, i.e. "/prod"
+  }
+  next();
+});
+
 // Route for generating feedback #20Feb2024
 app.post("/generate-feedback", async (req, res) => {
   try {
@@ -237,6 +245,120 @@ Fournissez un retour concis en deux lignes maximum, sans mentionner que la répo
     res.status(500).json({ error: "Failed to generate AI speech." });
   }
 });
+
+/**
+ * Endpoint: /api/calculate-speaking-score
+ * Expects { userResponses, topic, aiResponses } in the request body.
+ * Constructs a prompt for the AI model to rate the provided user responses based on grammar and content.
+ * The AI is instructed to return only a number (score) between 0 and 10.
+ * The endpoint extracts the score from the AI response and returns it.
+ */
+app.post("/api/calculate-speaking-score", async (req, res) => {
+  try {
+    const { userResponses, topic, aiResponses } = req.body;
+    if (!userResponses) {
+      return res.status(400).json({ error: "userResponses are required." });
+    }
+    
+    // Convert userResponses into a string format
+    let responsesString = "";
+    Object.entries(userResponses).forEach(([key, value]) => {
+      responsesString += `Response ${key}: ${value}\n`;
+    });
+
+    // Build the prompt instructing the AI to rate the responses
+    const ratingPrompt = `Vous êtes un examinateur de français. Évaluez les réponses du candidat en tenant compte de leur grammaire, de leur contenu, du sujet, ainsi que des retours fournis (feedback : ${aiResponses} - prendre seulment la partie après "role":"ai","text"). Si les retours indiquent une performance faible, ajustez la note en conséquence. Veuillez répondre uniquement par un nombre entre 0 et 10, sans explication. Par exemple, si vous estimez que la performance est de 5/10, répondez simplement "5".\n\nSujet : ${topic || "N/A"}\n${responsesString}`;
+
+    // Call the Together AI model with the prompt
+    const response = await together.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: ratingPrompt
+        }
+      ],
+      model: "meta-llama/Llama-Vision-Free",
+      max_tokens: 100,
+      temperature: 0.7,
+      top_p: 0.7,
+      top_k: 50,
+      repetition_penalty: 1,
+      stream: true
+    });
+    
+    // Accumulate the response tokens into a string
+    let ratingText = "";
+    for await (const token of response) {
+      ratingText += token.choices[0]?.delta?.content;
+    }
+    
+    // Use a regex to extract a number (score) from the response
+    const match = ratingText.match(/(\d+(\.\d+)?)/);
+    if (!match) {
+      return res.status(500).json({ error: "Could not extract score from AI response." });
+    }
+    const score = parseFloat(match[1]);
+    res.json({ score });
+  } catch (error) {
+    console.error("Error calculating speaking score:", error);
+    res.status(500).json({ error: "Failed to calculate speaking score." });
+  }
+});
+
+/**
+ * Endpoint: /api/generate-speaking-final-feedback
+ * Expects { userResponses, topic, aiResponses } in the request body.
+ * Constructs a prompt for the AI model to rate the provided user responses based on grammar and content.
+ * The AI is instructed to return only a feedback.
+ */
+app.post("/api/generate-speaking-final-feedback", async (req, res) => {
+  try {
+    const { userResponses, topic, aiResponses } = req.body;
+    if (!userResponses) {
+      return res.status(400).json({ error: "userResponses are required." });
+    }
+    
+    // Convert userResponses into a string format
+    let responsesString = "";
+    Object.entries(userResponses).forEach(([key, value]) => {
+      responsesString += `Response ${key}: ${value}\n`;
+    });
+
+    // Build the prompt instructing the AI to generate detailed final feedback
+    const ratingPrompt = `Vous êtes un examinateur de français. Évaluez les réponses du candidat en tenant compte de leur grammaire, de leur contenu, du sujet, ainsi que des retours fournis (feedback : ${aiResponses} - prendre seulment la partie après "role":"ai","text"). En vous basant sur ces éléments, donnez un retour final détaillé et constructif pour aider le candidat à s'améliorer. Veuillez répondre uniquement par un retour pour le candidat.\n\nSujet : ${topic || "N/A"}\n${responsesString}`;
+
+    // Call the Together AI model with the prompt
+    const response = await together.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: ratingPrompt
+        }
+      ],
+      model: "meta-llama/Llama-Vision-Free",
+      max_tokens: 200, // Increased tokens if necessary for detailed feedback
+      temperature: 0.7,
+      top_p: 0.7,
+      top_k: 50,
+      repetition_penalty: 1,
+      stream: true
+    });
+    
+    // Accumulate the response tokens into a string
+    let feedbackText = "";
+    for await (const token of response) {
+      feedbackText += token.choices[0]?.delta?.content;
+    }
+    
+    console.log("feedback: " + feedbackText);
+    // Return the complete feedback text
+    res.json({ feedback: feedbackText });
+  } catch (error) {
+    console.error("Error generating final feedback:", error);
+    res.status(500).json({ error: "Failed to generate final feedback." });
+  }
+});
+
 
 /**
  Endpoint: /api/listening-question

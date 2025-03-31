@@ -83,11 +83,10 @@ class Donation extends React.Component {
             
             console.log("#rp" + donorAddress);
 
-            // Define backend URL for GraphQL and invoice view
-            const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
-
+            const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+            
             // Call backend GraphQL mutation to save the donation record
-            fetch(process.env.REACT_APP_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql", {
+            fetch(GRAPHQL_ENDPOINT, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json"
@@ -131,7 +130,7 @@ class Donation extends React.Component {
                 } else {
                     const donationId = result.data.createDonation.id;
                     // Construct invoice URL using your backend endpoint
-                    const invoiceUrl = `${backendUrl}/api/invoice/${donationId}`;
+                    const invoiceUrl = `${process.env.REACT_APP_API_URL}/api/invoice/${donationId}`;
                     
                     // Show success overlay with invoice info
                     this.setState({

@@ -232,11 +232,6 @@ const WritingMock = () => {
         Conclude with a score out of 10. Above 4 sections are must.
       `;
 
-      const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
     const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

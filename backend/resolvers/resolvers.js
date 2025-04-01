@@ -165,6 +165,7 @@ const resolvers = {
     
     // New: Fetch test history (scores) for a given user
     testHistories: async (_, { userId }) => {
+      console.log("Fetching test histories for userId:", userId);
       try {
         return await History.find({ userId });
       } catch (error) {
@@ -265,6 +266,7 @@ const resolvers = {
       .populate("opponent", "username");;
     },
     userImageMatches: async (_, { userId }) => {
+      console.log("Fetching completed image matches for userId:", userId);
       return await ImageMatch.find({
         $or: [{ initiator: userId }, { opponent: userId }],
         status: "completed"
@@ -272,6 +274,13 @@ const resolvers = {
       .sort({ createdAt: -1 })
       .populate("initiator", "username")
       .populate("opponent", "username");
+    },
+    userWritingMatches: async (_, { userId }) => {
+      console.log("Fetching completed writing matches for userId:", userId);
+      return await WritingMatch.find({
+        $or: [{ initiator: userId }, { opponent: userId }],
+        status: 'completed'
+      }).populate('initiator opponent');
     },
   },
 
@@ -506,45 +515,43 @@ const resolvers = {
 
     // Finalize the match after both users have submitted
     finalizeWritingMatch: async (_, { matchId }) => {
+      const extractScoreFromFeedback = (feedback) => {
+        const scoreMatch = feedback.match(/(?:Score:|score:)\s*([0-9.]+)\/10/i);
+        return scoreMatch ? parseFloat(scoreMatch[1]) : 0;
+      };
+    
       const match = await WritingMatch.findById(matchId);
-      if (!match) {
-        throw new Error("Match not found");
-      }
+      if (!match) throw new Error("Match not found");
       if (!match.initiatorAnswer || !match.opponentAnswer) {
-        throw new Error("Both users must submit an answer before finalizing");
+        throw new Error("Both users must submit answers before finalizing");
       }
-      // Generate feedback for each answer
+    
+      // Generate feedback and extract scores
       const [initiatorFeedback, opponentFeedback] = await Promise.all([
         generateFeedback(match.examQuestion, match.initiatorAnswer),
-        generateFeedback(match.examQuestion, match.opponentAnswer)
+        generateFeedback(match.examQuestion, match.opponentAnswer),
       ]);
+    
+      // Extract scores from feedback
+      const initiatorScore = extractScoreFromFeedback(initiatorFeedback);
+      const opponentScore = extractScoreFromFeedback(opponentFeedback);
+    
+      // Update match with feedback and scores
       match.initiatorFeedback = initiatorFeedback;
       match.opponentFeedback = opponentFeedback;
+      match.totalScore = {
+        initiator: initiatorScore,
+        opponent: opponentScore
+      };
       match.status = "completed";
       await match.save();
-      
-      // Re-query the match with populated user fields
+    
+      // Return populated match
       const populatedMatch = await WritingMatch.findById(matchId)
         .populate("initiator", "username")
         .populate("opponent", "username");
-      
-      // Normalize the document: convert ObjectIds to strings
-      const matchObj = populatedMatch.toObject();
-      matchObj.id = matchObj._id.toString();
-      matchObj.examId = matchObj.examId.toString();
-      matchObj.initiator = {
-        id: matchObj.initiator._id.toString(),
-        username: matchObj.initiator.username,
-      };
-      matchObj.opponent = {
-        id: matchObj.opponent._id.toString(),
-        username: matchObj.opponent.username,
-      };
-      delete matchObj._id;
-      delete matchObj.__v;
-      console.log("Finalized match:", matchObj);
-      
-      return matchObj;
+    
+      return populatedMatch.toObject({ virtuals: true });
     },
 
     createImageMatch: async (_, { input }) => {

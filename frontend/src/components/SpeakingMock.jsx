@@ -11,13 +11,13 @@ const getExamImage = (topic) => {
   const lower = topic.toLowerCase();
 
   if (lower.includes("vols")) {
-    return "https://www.tesl-lugano.ch/wp-content/uploads/2023/10/francese-cover-ragazzi.jpg";
+    return "images/speaking3.png";
   } else if (lower.includes("tourisme")) {
-    return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
+    return "images/speaking1.png";
   } else if (lower.includes("technologies")) {
-    return "https://www.frenchclass.in/wp-content/uploads/2024/04/French-Language-Certifications-Banner-Image.webp";
+    return "images/speaking2.png";
   }
-  return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
+  return "images/speaking0.png"; // Default image if no match found
 };
 
 const frenchBlue = "#0055A4";
@@ -457,9 +457,12 @@ const SpeakingMock = () => {
                     src={getExamImage(exam.topic)}
                     className="card-img-top"
                     alt="Speaking Exam"
-                    style={{ height: "200px", objectFit: "cover" }}
+                    style={{ width: '100%',
+                      height: 'auto',
+                      maxHeight: '400px',
+                      objectFit: 'contain' }}
                   />
-                  <div className="card-body">
+                  <div className="card-body text-center">
                     <h4 className="card-title">{exam.topic}</h4>
                   </div>
                 </div>

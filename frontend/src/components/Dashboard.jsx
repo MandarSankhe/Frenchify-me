@@ -15,7 +15,7 @@ ChartJS.register(
   ArcElement
 );
 
-const GRAPHQL_URI = process.env.REACT_APP_API_URL || 'http://localhost:4000/graphql';
+const GRAPHQL_URI = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
 
 const Dashboard = () => {
   const { user } = useAuth(); // Get logged-in user's data from AuthContext

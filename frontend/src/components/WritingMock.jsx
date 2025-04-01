@@ -13,11 +13,11 @@ const frenchWhite = "#FFFFFF";
 const getExamImage = (level) => {
   switch (level) {
     case "Beginner":
-      return "https://st.depositphotos.com/68420530/61027/i/450/depositphotos_610276066-stock-photo-cheerful-young-pupil-secondary-school.jpg";
+      return "images/writing1.png";
     case "Intermediate":
-      return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
+      return "images/writing2.png";
     case "Advanced":
-      return "https://admissionsight.com/wp-content/uploads/2020/09/shutterstock_2072405507-768x512.jpg";
+      return "images/writing3.png";
     default:
       return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
   }
@@ -237,6 +237,11 @@ const WritingMock = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+    const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
 
       const data = await res.json();
       // If no feedback is returned, set a default message.

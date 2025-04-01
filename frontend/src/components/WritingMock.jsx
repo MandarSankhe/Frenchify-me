@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import LoadingSpinner from "./LoadingSpinner";
+import { useAuth } from "../context/AuthContext";
 
 // French flag colors
 const frenchBlue = "#0055A4";
@@ -13,11 +14,11 @@ const frenchWhite = "#FFFFFF";
 const getExamImage = (level) => {
   switch (level) {
     case "Beginner":
-      return "https://st.depositphotos.com/68420530/61027/i/450/depositphotos_610276066-stock-photo-cheerful-young-pupil-secondary-school.jpg";
+      return "images/writing1.png";
     case "Intermediate":
-      return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
+      return "images/writing2.png";
     case "Advanced":
-      return "https://admissionsight.com/wp-content/uploads/2020/09/shutterstock_2072405507-768x512.jpg";
+      return "images/writing3.png";
     default:
       return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
   }
@@ -137,6 +138,8 @@ const FeedbackDisplay = ({ feedback }) => {
 };
 
 const WritingMock = () => {
+  const { user } = useAuth();
+
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
   const [currentExercise, setCurrentExercise] = useState(null);
@@ -213,44 +216,86 @@ const WritingMock = () => {
     setWordCount(0);
   };
 
-  const handleSubmitExercise = async () => {
-    setLoading(true);
-    try {
-      const prompt = `
-        Evaluate the following TCF French Writing Test answer based on the question:
-        Question: ${currentExercise}
-        Answer: ${response}
-        
-        Provide detailed feedback on the answer in English, must have 4 points:
-        - **Strengths:** (e.g., clear structure, effective use of descriptive language)
-        - **Weaknesses:** (e.g., brevity, grammatical mistakes)
-        - **Language and grammar assessment:** (e.g., vocabulary, syntax)
-        - **Score:**
-        Conclude with a score out of 10. Above 4 sections are must.
-      `;
+  // Add this to your existing handleSubmitExercise function
+const handleSubmitExercise = async () => {
+  setLoading(true);
+  try {
+    const prompt = `
+      Evaluate the following TCF French Writing Test answer based on the question:
+      Question: ${currentExercise}
+      Answer: ${response}
+      
+      Provide detailed feedback on the answer in English, must have 4 points:
+      - **Strengths:** (e.g., clear structure, effective use of descriptive language)
+      - **Weaknesses:** (e.g., brevity, grammatical mistakes)
+      - **Language and grammar assessment:** (e.g., vocabulary, syntax)
+      - **Score:**
+      Conclude with a score out of 10. Above 4 sections are must.
+    `;
 
+<<<<<<< Updated upstream
       const res = await fetch("http://localhost:4000/generate-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+=======
+    const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+>>>>>>> Stashed changes
 
-      const data = await res.json();
-      // If no feedback is returned, set a default message.
-      setFeedback(data.feedback || "No feedback received.");
-      setResponse("");
-      setKeyboardInput("");
-      if (keyboardRef.current) {
-        keyboardRef.current.setInput("");
+    const data = await res.json();
+    setFeedback(data.feedback || "No feedback received.");
+    
+    // Extract score from feedback
+    const scoreMatch = data.feedback.match(/Score:\s*([0-9.]+)\/10/i);
+    const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
+    
+
+    // Save to history
+    const saveScoreMutation = `
+      mutation SubmitTestScore($input: TestScoreInput!) {
+        submitTestScore(input: $input) {
+          id
+          score
+        }
       }
-      setWordCount(0);
-    } catch (error) {
-      setFeedback("Error fetching feedback. Please try again.");
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
+    `;
+
+    await fetch(GRAPHQL_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: saveScoreMutation,
+        variables: {
+          input: {
+            userId: user.id,
+            testModelName: "TcfWriting",
+            testId: selectedExam.id,
+            score: score
+          }
+        }
+      })
+    });
+
+    // Reset fields
+    setResponse("");
+    setKeyboardInput("");
+    if (keyboardRef.current) {
+      keyboardRef.current.setInput("");
     }
-  };
+    setWordCount(0);
+    
+  } catch (error) {
+    setFeedback("Error fetching feedback. Please try again.");
+    console.error("Error:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleNextExercise = () => {
     const exercises = [
@@ -322,7 +367,10 @@ const WritingMock = () => {
                     src={getExamImage(exam.level)}
                     className="card-img-top"
                     alt={`${exam.level} Exam`}
-                    style={{ height: "200px", objectFit: "cover" }}
+                    style={{ width: '100%',
+                      height: 'auto',
+                      maxHeight: '400px',
+                      objectFit: 'contain' }}
                   />
                   <div className="card-body">
                     <h4 className="card-title">{exam.title}</h4>

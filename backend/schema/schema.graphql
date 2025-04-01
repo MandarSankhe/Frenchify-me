@@ -149,7 +149,13 @@ type WritingMatch {
   initiatorFeedback: String
   opponentFeedback: String
   status: String!   # "pending", "active", "completed"
+  totalScore: WritingMatchScore  
   createdAt: String!
+}
+
+type WritingMatchScore {
+  initiator: Float
+  opponent: Float
 }
 
 input CreateWritingMatchInput {
@@ -298,4 +304,5 @@ type Query {
   pendingImageMatches(userId: ID!): [ImageMatch!]!
   imageMatch(matchId: ID!): ImageMatch
   userImageMatches(userId: ID!): [ImageMatch!]!
+  userWritingMatches(userId: ID!): [WritingMatch!]!
 }

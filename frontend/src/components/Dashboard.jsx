@@ -26,11 +26,8 @@ ChartJS.register(
   ArcElement
 );
 
-<<<<<<< Updated upstream
-=======
 const GRAPHQL_URI = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
 
->>>>>>> Stashed changes
 const Dashboard = () => {
   const { user } = useAuth();
   const [testHistories, setTestHistories] = useState([]);

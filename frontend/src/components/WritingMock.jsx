@@ -233,19 +233,11 @@ const handleSubmitExercise = async () => {
       Conclude with a score out of 10. Above 4 sections are must.
     `;
 
-<<<<<<< Updated upstream
-      const res = await fetch("http://localhost:4000/generate-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-=======
-    const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
+    const res = await fetch(`${REACT_APP_API_URL}/generate-feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
     });
->>>>>>> Stashed changes
 
     const data = await res.json();
     setFeedback(data.feedback || "No feedback received.");

@@ -139,7 +139,6 @@ const FeedbackDisplay = ({ feedback }) => {
 
 const WritingMock = () => {
   const { user } = useAuth();
-
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
   const [currentExercise, setCurrentExercise] = useState(null);
@@ -152,6 +151,9 @@ const WritingMock = () => {
 
   // Create a ref for the on-screen keyboard
   const keyboardRef = useRef(null);
+
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
   // Handle input from on-screen keyboard
   const handleKeyboardChange = (input) => {
@@ -192,7 +194,7 @@ const WritingMock = () => {
         }
       `;
       try {
-        const res = await fetch("http://localhost:4000/graphql", {
+        const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
@@ -233,7 +235,7 @@ const handleSubmitExercise = async () => {
       Conclude with a score out of 10. Above 4 sections are must.
     `;
 
-    const res = await fetch(`${REACT_APP_API_URL}/generate-feedback`, {
+    const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
@@ -245,7 +247,6 @@ const handleSubmitExercise = async () => {
     // Extract score from feedback
     const scoreMatch = data.feedback.match(/Score:\s*([0-9.]+)\/10/i);
     const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
-    
 
     // Save to history
     const saveScoreMutation = `

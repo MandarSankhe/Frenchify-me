@@ -66,7 +66,7 @@ const Dashboard = () => {
       `;
 
       try {
-        const response = await fetch("http://localhost:4000/graphql", {
+        const response = await fetch(GRAPHQL_URI, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 

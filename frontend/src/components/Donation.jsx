@@ -64,19 +64,29 @@ class Donation extends React.Component {
         },
         onApprove: (data, actions) => {
           return actions.order.capture().then(details => {
-            // alert(`Donation successful! Thank you, ${details.payer.name.given_name}.`);
+            //alert(`Donation successful! Thank you, ${details.payer.name.given_name}.`);
+            console.log("#rp: donor details: ", details);
 
             // Extract donor information from PayPal details
             const donationAmount = parseFloat(this.state.amount).toFixed(2);
-            const payerName = details.payer.name;
-            const fullName = payerName.given_name + (payerName.surname ? " " + payerName.surname : "");
+            const donorName = details.payer.name;
+            const fullName = donorName.given_name + (donorName.surname ? " " + donorName.surname : "");
             const email = details.payer.email_address || "";
+            const donorAddress = details.purchase_units[0]?.shipping?.address || {};
 
-            // Define backend URL for GraphQL and invoice view
-            const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+            const street = donorAddress.address_line_1 || "";
+            const city = donorAddress.admin_area_2 || "";
+            const state = donorAddress.admin_area_1 || "";
+            const postalCode = donorAddress.postal_code || "";
+            const country = donorAddress.country_code || "";
 
+            
+            console.log("#rp" + donorAddress);
+
+            const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+            
             // Call backend GraphQL mutation to save the donation record
-            fetch(process.env.REACT_APP_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql", {
+            fetch(GRAPHQL_ENDPOINT, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json"
@@ -95,7 +105,12 @@ class Donation extends React.Component {
                     fullName,
                     email,
                     amount: parseFloat(donationAmount),
-                    message: "Thank you for your donation!"
+                    message: "Thank you for your donation!",
+                    street,
+                    city,
+                    state,
+                    postalCode,
+                    country
                   }
                 }
               })
@@ -115,7 +130,7 @@ class Donation extends React.Component {
                 } else {
                     const donationId = result.data.createDonation.id;
                     // Construct invoice URL using your backend endpoint
-                    const invoiceUrl = `${backendUrl}/api/invoice/${donationId}`;
+                    const invoiceUrl = `${process.env.REACT_APP_API_URL}/api/invoice/${donationId}`;
                     
                     // Show success overlay with invoice info
                     this.setState({

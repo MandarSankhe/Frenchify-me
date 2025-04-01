@@ -287,17 +287,22 @@ const resolvers = {
   Mutation: {
     // Login
     login: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user || !(await bcrypt.compare(password, user.password))) {
-        throw new Error("Invalid email or password");
+      try {
+        const user = await User.findOne({ email });
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+          throw new Error("Invalid email or password");
+        }
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          languageLevel: user.languageLevel,
+          profileImage: user.profileImage,
+        };
+      } catch (error) {
+        console.error("Detailed error creating user:", error.message);
+        throw new Error("Failed to login.");
       }
-      return {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        languageLevel: user.languageLevel,
-        profileImage: user.profileImage,
-      };
     },
 
     // Create user
@@ -362,7 +367,7 @@ const resolvers = {
                   style="width: 100px; height: auto;">
             </div>
           `
-        };
+        }; // TODO rp: change localhost:3000 for prod (use .env for prod+local)
     
         const info = await transporter.sendMail(mailOptions);
         console.log("Email sent:", info.response);

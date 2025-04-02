@@ -21,9 +21,18 @@ require("dotenv").config();
 const together = new Together();
 
 const Redis = require("ioredis");
-const redis = new Redis();
+
+const isElastiCacheRedis = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+const redis = isElastiCacheRedis
+  ? new Redis({
+      host: process.env.AWS_ELASTICACHE_REDIS,
+      port: 6379,
+      tls: {} // Required - encryption in transit is enabled in ElastiCache
+    })
+  : new Redis();
 
 const PW_MUT_SECRET_KEY = process.env.PW_MUT_SECRET_KEY;
+
 
 // Create an instance of the Imgur client.
 const imgurClient = new ImgurClient({

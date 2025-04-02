@@ -15,6 +15,8 @@ const UPDATE_USER_MUTATION = gql`
   }
 `;
 
+const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+
 const UserSettings = () => {
   const { user, updateUserdata  } = useAuth(); // get logged-in user from context
   const navigate = useNavigate();
@@ -62,14 +64,81 @@ const UserSettings = () => {
     }
   };
 
-  // Log the data being sent to the resolver before the mutation
-  const logData = () => {
-    console.log("Sending data to resolver:");
-    console.log("User ID:", user.id);
-    console.log("Form Data:", formData);
-    console.log("Selected File:", selectedFile);  // If file is selected
-    console.log("Selected File (Preview URL):", previewUrl);
+
+  // Function to download the transcript PDF
+  const downloadTranscript = async () => {
+    if (!user?.id) return;
+    
+    // Fetch dashboard data from GraphQL (same query as your Dashboard component)
+    const query = `
+      query GetDashboardData($userId: ID!) {
+        testHistories(userId: $userId) {
+          id
+          testModelName
+          score
+          createdAt
+        }
+        writingH2H: userWritingMatches(userId: $userId) {
+          id
+          initiator { id }
+          opponent { id }
+          totalScore { initiator opponent }
+          status
+          createdAt
+        }
+        imagePuzzleH2H: userImageMatches(userId: $userId) {
+          id
+          initiator { id }
+          opponent { id }
+          totalScore { initiator opponent }
+          status
+          createdAt
+        }
+      }
+    `;
+    
+    try {
+      const response = await fetch(GRAPHQL_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, variables: { userId: user.id } }),
+      });
+      const result = await response.json();
+      if (result.errors) {
+        console.error("GraphQL errors:", result.errors);
+        return;
+      }
+      
+      // Post the data to the transcript API endpoint
+      const transcriptResponse = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/transcript`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            username: user.username,
+            testHistories: result.data.testHistories,
+            writingMatches: result.data.writingH2H,
+            imageMatches: result.data.imagePuzzleH2H,
+          }),
+        }
+      );
+      
+      // Convert the response to a blob and trigger download
+      const blob = await transcriptResponse.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transcript-${user.username}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (error) {
+      console.error("Error downloading transcript:", error);
+    }
   };
+
 
   // Handle Form Submission – pass the file as a separate variable if available.
   const handleSubmit = async (e) => {
@@ -193,6 +262,15 @@ const UserSettings = () => {
                 style={{ backgroundColor: "#0055A4" }}
               >
                 Update Profile
+              </button>
+            </div>
+            <div className="container mt-4">
+              <button
+                className="btn btn-secondary"
+                onClick={downloadTranscript}
+                style={{ backgroundColor: "#0055A4", color: "#fff" }}
+              >
+                Download Transcript
               </button>
             </div>
           </form>

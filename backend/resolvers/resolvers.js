@@ -20,16 +20,16 @@ const { ImgurClient } = require('imgur');
 require("dotenv").config();
 const together = new Together();
 
-const Redis = require("ioredis");
+// const Redis = require("ioredis");
 
-const isElastiCacheRedis = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
-const redis = isElastiCacheRedis
-  ? new Redis({
-      host: process.env.AWS_ELASTICACHE_REDIS,
-      port: 6379,
-      tls: {} // Required - encryption in transit is enabled in ElastiCache
-    })
-  : new Redis();
+// const isElastiCacheRedis = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+// const redis = isElastiCacheRedis
+//   ? new Redis({
+//       host: process.env.AWS_ELASTICACHE_REDIS,
+//       port: 6379,
+//       tls: {} // Required - encryption in transit is enabled in ElastiCache
+//     })
+//   : new Redis();
 
 const PW_MUT_SECRET_KEY = process.env.PW_MUT_SECRET_KEY;
 
@@ -309,7 +309,7 @@ const resolvers = {
           profileImage: user.profileImage,
         };
       } catch (error) {
-        console.error("Detailed error creating user:", error.message);
+        console.error("Detailed error logging in user:", error.message);
         throw new Error("Failed to login.");
       }
     },
@@ -391,10 +391,10 @@ const resolvers = {
     resetPassword: async (_, { token, newPassword }) => {
       try {
         // Check if token is already blacklisted
-        const isBlacklisted = await redis.get(`blacklisted:${token}`);
-        if (isBlacklisted) {
-          throw new Error("Token has already been used.");
-        }
+        // const isBlacklisted = await redis.get(`blacklisted:${token}`);
+        // if (isBlacklisted) {
+        //   throw new Error("Token has already been used.");
+        // }
         // Verify token
         const decoded = jwt.verify(token, PW_MUT_SECRET_KEY);
         const user = await User.findOne({ email: decoded.email });
@@ -409,7 +409,7 @@ const resolvers = {
         await user.save();
 
         // Blacklist the token in Redis - to prevent a 2nd password change
-        await redis.set(`blacklisted:${token}`, "true", "EX", 3600); // Expires after 1 hour
+        // await redis.set(`blacklisted:${token}`, "true", "EX", 3600); // Expires after 1 hour
 
         return "Password successfully reset.";
       } catch (error) {

@@ -789,7 +789,7 @@ async function startServer() {
   await mongoose.connect(process.env.MONGO_URI, {
     //useUnifiedTopology: true,
     //useNewUrlParser: true,
-    serverSelectionTimeoutMS: 10000
+    serverSelectionTimeoutMS: 16000
   });
   console.log("Connected to MongoDB successfully!");
 

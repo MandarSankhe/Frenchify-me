@@ -806,8 +806,5 @@ async function startServer() {
 
 startServer().catch((err) => console.log(err));
 
-
-startServer().catch((err) => console.log(err));
-
 // Export the app for Lambda usage
 module.exports = app;

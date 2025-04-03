@@ -121,7 +121,6 @@ async function generateFeedback(question, answer) {
   return feedback.replace(/\n/g, "<br>");
 }
 
-// Vipul 
 const resolvers = {
   Query: {
     // Fetch all users

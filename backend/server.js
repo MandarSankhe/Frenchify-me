@@ -785,13 +785,15 @@ async function startServer() {
   await server.start();
   server.applyMiddleware({ app, path: "/graphql" });
 
-  // Connect to MongoDB
-  await mongoose.connect(process.env.MONGO_URI, {
-    //useUnifiedTopology: true,
-    //useNewUrlParser: true,
-    serverSelectionTimeoutMS: 16000
-  });
-  console.log("Connected to MongoDB successfully!");
+  // Check if already connected before attempting to connect
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 16000
+    });
+    console.log("Connected to MongoDB successfully!");
+  } else {
+    console.log("MongoDB already connected.");
+  }
 
   // For local development: start listening if not running on Lambda
   if (!process.env.LAMBDA_TASK_ROOT) {
@@ -801,6 +803,9 @@ async function startServer() {
     });
   }
 }
+
+startServer().catch((err) => console.log(err));
+
 
 startServer().catch((err) => console.log(err));
 

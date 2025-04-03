@@ -581,7 +581,7 @@ const resolvers = {
         questions: exam.questions.map(q => ({
           imageUrl: q.imageUrl,
           correctWord: q.correctWord,
-          revealedLetters: q.revealedLetters
+          revealedLetters: q.revealedLetters,
         })),
         opponent: opponent._id,
         status: "pending", 
@@ -613,21 +613,27 @@ const resolvers = {
         .populate("opponent", "username");
     
       if (!match) throw new Error("Match not found");
-      
+    
+      // Check if the 5-minute time limit has been exceeded.
+      const timeElapsed = Date.now() - new Date(match.createdAt).getTime();
+      if (timeElapsed >= 5 * 60 * 1000 && match.status !== "completed") {
+        match.status = "completed";
+        await match.save();
+        return match;
+      }
+    
       const isInitiator = match.initiator._id.equals(input.userId);
       const currentUserField = isInitiator ? 'initiatorCurrent' : 'opponentCurrent';
       const currentQuestionIndex = match[currentUserField];
     
-      // Validate question index
       if (input.questionIndex !== currentQuestionIndex) {
         throw new Error("Invalid question submission");
       }
     
       const question = match.questions[currentQuestionIndex];
       const correct = question.correctWord.toLowerCase() === input.answer.toLowerCase();
-      const score = correct ? 10 : 0;
+      const score = input.isPass ? 0 : (correct ? 10 : 0);
     
-      // Update answers and scores
       if (isInitiator) {
         question.initiatorAnswer = input.answer;
         question.initiatorScore = score;
@@ -638,11 +644,9 @@ const resolvers = {
         match.totalScore.opponent += score;
       }
     
-      // Move only the submitting user to next question
       match[currentUserField] += 1;
     
-      // Check if both players have completed all questions
-      const bothCompleted = 
+      const bothCompleted =
         match.initiatorCurrent >= match.questions.length &&
         match.opponentCurrent >= match.questions.length;
     
@@ -653,6 +657,32 @@ const resolvers = {
       await match.save();
       return match;
     },
+
+    finishImageMatch: async (_, { matchId }) => {
+      const match = await ImageMatch.findById(matchId)
+        .populate("initiator", "username")
+        .populate("opponent", "username");
+      if (!match) throw new Error("Match not found");
+      
+      // Force complete any unanswered questions
+      const questions = match.questions.map(q => {
+        if (!q.initiatorAnswer) {
+          q.initiatorAnswer = "";
+          q.initiatorScore = 0;
+        }
+        if (!q.opponentAnswer) {
+          q.opponentAnswer = "";
+          q.opponentScore = 0;
+        }
+        return q;
+      });
+    
+      match.questions = questions;
+      match.status = "completed";
+      await match.save();
+      return match;
+    },
+    
     
     updateUser: async (_, { id, input, profileImage }) => {
       try {

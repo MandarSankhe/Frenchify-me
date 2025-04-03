@@ -17,7 +17,8 @@ type Mutation {
   createImageMatch(input: CreateImageMatchInput!): ImageMatch
   acceptImageMatch(matchId: ID!, opponentId: ID!): ImageMatch
   submitImageAnswer(input: SubmitImageAnswerInput!): ImageMatch
-  finalizeImageMatch(matchId: ID!): ImageMatch
+  finishImageMatch(matchId: ID!): ImageMatch
+
 }
 
 input UserInput {
@@ -286,6 +287,7 @@ input SubmitImageAnswerInput {
   userId: ID!
   questionIndex: Int!
   answer: String!
+  isPass: Boolean
 }
 # Image Exam end
 

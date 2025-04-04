@@ -253,7 +253,6 @@ type ImageMatch {
   examTitle: String!
   initiatorCurrent: Int!
   opponentCurrent: Int!
-  questions: [ImageMatchQuestion!]!
   initiator: User!
   opponent: User!
   status: String!

@@ -267,22 +267,23 @@ const resolvers = {
       return await ImageMatch.find({
         $or: [{ initiator: userId }, { opponent: userId }],
         status: { $in: ["pending", "active"] }
-      }).populate("initiator", "username")
-      .populate("opponent", "username");;
+      })
+        .populate("initiator", "username")
+        .populate("opponent", "username");
     },
     imageMatch: async (_, { matchId }) => {
-      return await ImageMatch.findById(matchId).populate("initiator", "username")
-      .populate("opponent", "username");;
+      return await ImageMatch.findById(matchId)
+        .populate("initiator", "username")
+        .populate("opponent", "username");
     },
     userImageMatches: async (_, { userId }) => {
-      console.log("Fetching completed image matches for userId:", userId);
       return await ImageMatch.find({
         $or: [{ initiator: userId }, { opponent: userId }],
         status: "completed"
       })
-      .sort({ createdAt: -1 })
-      .populate("initiator", "username")
-      .populate("opponent", "username");
+        .sort({ createdAt: -1 })
+        .populate("initiator", "username")
+        .populate("opponent", "username");
     },
     userWritingMatches: async (_, { userId }) => {
       console.log("Fetching completed writing matches for userId:", userId);
@@ -564,27 +565,19 @@ const resolvers = {
     },
 
     createImageMatch: async (_, { input }) => {
-      console.log("Creating image match with input:", input);
       const exam = await ImageExam.findById(input.examId);
       if (!exam) throw new Error("Exam not found");
       const opponent = await User.findOne({ username: input.opponentUsername });
       if (!opponent) throw new Error("Opponent not found");
-      console.log("Creating image match with opponent:", opponent.username);
     
       const newMatch = new ImageMatch({
         initiator: input.initiatorId,
         examId: input.examId,
         examTitle: exam.title,
-        //currentQuestion: 0,
         initiatorCurrent: 0,
         opponentCurrent: 0,
-        questions: exam.questions.map(q => ({
-          imageUrl: q.imageUrl,
-          correctWord: q.correctWord,
-          revealedLetters: q.revealedLetters,
-        })),
         opponent: opponent._id,
-        status: "pending", 
+        status: "pending",
         totalScore: { initiator: 0, opponent: 0 }
       });
       
@@ -611,10 +604,9 @@ const resolvers = {
       const match = await ImageMatch.findById(input.matchId)
         .populate("initiator", "username")
         .populate("opponent", "username");
-    
       if (!match) throw new Error("Match not found");
     
-      // Check if the 5-minute time limit has been exceeded.
+      // Check time limit – if exceeded, finish match.
       const timeElapsed = Date.now() - new Date(match.createdAt).getTime();
       if (timeElapsed >= 5 * 60 * 1000 && match.status !== "completed") {
         match.status = "completed";
@@ -623,40 +615,44 @@ const resolvers = {
       }
     
       const isInitiator = match.initiator._id.equals(input.userId);
-      const currentUserField = isInitiator ? 'initiatorCurrent' : 'opponentCurrent';
+      const currentUserField = isInitiator ? "initiatorCurrent" : "opponentCurrent";
       const currentQuestionIndex = match[currentUserField];
     
-      if (input.questionIndex !== currentQuestionIndex) {
-        throw new Error("Invalid question submission");
+      const exam = await ImageExam.findById(match.examId);
+      if (!exam) throw new Error("Exam not found for this match");
+      if (currentQuestionIndex >= exam.questions.length) {
+        throw new Error("No more questions left");
       }
     
-      const question = match.questions[currentQuestionIndex];
-      const correct = question.correctWord.toLowerCase() === input.answer.toLowerCase();
-      const score = input.isPass ? 0 : (correct ? 10 : 0);
+      const question = exam.questions[currentQuestionIndex];
+      // Compare after trimming and converting to lowercase.
+      const submittedAnswer = input.answer.trim().toLowerCase();
+      const correctWord = question.correctWord.trim().toLowerCase();
+      const correct = submittedAnswer === correctWord;
+      console.log("Answer correctness:", correctWord, submittedAnswer, correct);
+    
+      // If isPass is explicitly true then score is 0; otherwise, award 10 if correct.
+      const score = input.isPass === true ? 0 : (correct ? 10 : 0);
+      console.log("Is pass:", input.isPass); // Verify this logs 'true' when Pass is used
     
       if (isInitiator) {
-        question.initiatorAnswer = input.answer;
-        question.initiatorScore = score;
         match.totalScore.initiator += score;
       } else {
-        question.opponentAnswer = input.answer;
-        question.opponentScore = score;
         match.totalScore.opponent += score;
       }
     
+      // Increment the current question index.
       match[currentUserField] += 1;
     
-      const bothCompleted =
-        match.initiatorCurrent >= match.questions.length &&
-        match.opponentCurrent >= match.questions.length;
-    
-      if (bothCompleted) {
+      if (match.initiatorCurrent >= exam.questions.length && match.opponentCurrent >= exam.questions.length) {
         match.status = "completed";
       }
     
       await match.save();
       return match;
     },
+    
+    
 
     finishImageMatch: async (_, { matchId }) => {
       const match = await ImageMatch.findById(matchId)
@@ -664,20 +660,6 @@ const resolvers = {
         .populate("opponent", "username");
       if (!match) throw new Error("Match not found");
       
-      // Force complete any unanswered questions
-      const questions = match.questions.map(q => {
-        if (!q.initiatorAnswer) {
-          q.initiatorAnswer = "";
-          q.initiatorScore = 0;
-        }
-        if (!q.opponentAnswer) {
-          q.opponentAnswer = "";
-          q.opponentScore = 0;
-        }
-        return q;
-      });
-    
-      match.questions = questions;
       match.status = "completed";
       await match.save();
       return match;

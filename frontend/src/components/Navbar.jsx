@@ -117,6 +117,11 @@ const Navbar = () => {
                     Head2Head
                   </NavLink>
                 </li>
+                <li className="nav-item">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/about">
+                    About Us
+                  </NavLink>
+                </li>
                 <div className="dropdown" ref={dropdownRef}>
                   <button
                     className="btn btn-link dropdown-toggle d-flex align-items-center"
@@ -178,6 +183,11 @@ const Navbar = () => {
                 <li className="nav-item">
                   <NavLink className="nav-link" style={navLinkStyle} to="/">
                     Home
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/about">
+                    About Us
                   </NavLink>
                 </li>
                 <li className="nav-item">

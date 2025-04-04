@@ -23,6 +23,7 @@ import ListeningTraining from "./components/ListeningTraining";
 import ListeningMock from "./components/ListeningMock";
 import UserSettings from "./components/UserSettings";
 import Donation from "./components/Donation";
+import About from "./components/About";
 import Footer from "./components/Footer";
 
 // Protected route component to restrict access if not authenticated
@@ -228,6 +229,18 @@ const App = () => {
                     <Navbar />
                     <div style={containerStyle}>
                         <Donation />
+                        <Footer />
+                    </div>
+                </>
+            ),
+        },
+        {
+            path: "/about",
+            element: (
+                <>
+                    <Navbar />
+                    <div style={containerStyle}>
+                        <About />
                         <Footer />
                     </div>
                 </>

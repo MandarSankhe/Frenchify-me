@@ -386,27 +386,21 @@ const Home = () => {
             </div>
             
             <div className="col-md-4 text-center text-md-end">
-              <button 
-                className="btn btn-light fw-bold px-4 py-3"
-                style={{
-                  color: frenchRed,
-                  border: `2px solid ${frenchWhite}`,
-                  borderRadius: "8px",
-                  fontSize: "1.1rem",
-                  minWidth: "180px",
-                  transition: "all 0.3s"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = frenchWhite;
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "";
-                  e.currentTarget.style.transform = "";
-                }}
-              >
-                Donate Now ❤️
-              </button>
+            <button 
+              className="btn btn-light fw-bold px-4 py-2"
+              style={{
+                color: frenchRed,
+                border: `2px solid ${frenchWhite}`,
+                borderRadius: "6px",
+                fontSize: "1.2rem",
+                transition: "0.3s"
+              }}
+              onMouseEnter={(e) => e.target.style.opacity = 0.95}
+              onMouseLeave={(e) => e.target.style.opacity = 1}
+              onClick={() => window.location.href = "/donate"} // Update when the donation page is ready
+            >
+              Donate Now ❤️
+            </button>
             </div>
           </div>
         </div>

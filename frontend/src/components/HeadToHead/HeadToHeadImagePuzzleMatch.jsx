@@ -180,7 +180,7 @@ const HeadToHeadImagePuzzleMatch = () => {
       : activeMatch.opponentCurrent
     : -1;
 
-    const prevQuestionIndexRef = useRef(null);
+  const prevQuestionIndexRef = useRef(null);
 
   // Queries
   const { data: historyData } = useQuery(GET_USER_IMAGE_MATCH_HISTORY, {
@@ -285,7 +285,6 @@ const HeadToHeadImagePuzzleMatch = () => {
     }
   }, [activeMatch, examData, user.id]);
     
-
   // Auto-submit useEffect: if answer is complete and not already submitted.
   useEffect(() => {
     if (activeMatch && examData && !hasSubmittedRef.current) {
@@ -538,7 +537,7 @@ const HeadToHeadImagePuzzleMatch = () => {
     if (activeMatch.status === "pending") {
       return (
         <div className="container my-5" style={{ maxWidth: "800px" }}>
-          <div className="card shadow-lg border-0 overflow-hidden" style={{ 
+          <div className="h2hcard card shadow-lg border-0 overflow-hidden" style={{ 
             backgroundColor: frenchWhite,
             borderRadius: "20px"
           }}>
@@ -625,7 +624,7 @@ const HeadToHeadImagePuzzleMatch = () => {
       }
       const currentQuestion = exam.questions[currentIndex];
       return (
-        <div className="container my-5" style={{ maxWidth: "1200px" }}>
+        <div className="container my-5" style={{ maxWidth: "1200px", zoom: 0.8 }}>
           <div className="card shadow-lg border-0 overflow-hidden" style={{ 
             backgroundColor: frenchWhite,
             borderRadius: "20px"
@@ -707,181 +706,154 @@ const HeadToHeadImagePuzzleMatch = () => {
                 </div>
               </div>
   
-              {/* Main Game Area */}
-              <div className="game-area">
-                <div className="image-container mb-5 text-center">
-                  <img 
-                    src={currentQuestion.imageUrl} 
-                    alt="Puzzle" 
-                    className="img-fluid rounded-3 shadow-lg" 
-                    style={{ 
-                      maxHeight: "450px",
-                      border: `4px solid ${frenchBlue}`,
-                      borderRadius: "15px"
-                    }}
-                  />
+              {/* Main Game Area split into two columns */}
+              <div className="row">
+                {/* Left Column: Image & Word Display */}
+                <div className="col-md-6 d-flex flex-column align-items-center">
+                  <div className="image-container mb-4 text-center">
+                    <img 
+                      src={currentQuestion.imageUrl} 
+                      alt="Puzzle" 
+                      className="img-fluid rounded-3 shadow-lg" 
+                      style={{ 
+                        maxHeight: "250px",
+                        border: `4px solid ${frenchBlue}`,
+                        borderRadius: "15px"
+                      }}
+                    />
+                  </div>
+                  {renderWordDisplay(currentQuestion, localRevealed)}
                 </div>
   
-                {renderWordDisplay(currentQuestion, localRevealed)}
-  
-                {/* Interactive Controls */}
-                <div className="controls-container">
-                  <div className="keyboard-container mb-4">
-                    <div className="d-flex flex-wrap justify-content-center gap-2">
-                      {alphabet.map((letter) => (
-                        <button
-                          key={letter}
-                          className="btn keyboard-key"
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            fontSize: "1.25rem",
-                            fontWeight: "600",
-                            backgroundColor: frenchWhite,
-                            color: frenchBlue,
-                            border: `2px solid ${frenchBlue}`,
-                            borderRadius: "10px",
-                            transition: "all 0.2s ease"
-                          }}
-                          onMouseOver={(e) => e.target.style.transform = "scale(1.1)"}
-                          onMouseOut={(e) => e.target.style.transform = "scale(1)"}
-                          onClick={() => handleLetterClick(letter)}
-                        >
-                          {letter}
-                        </button>
-                      ))}
+                {/* Right Column: Controls */}
+                <div className="col-md-6">
+                  <div className="controls-container">
+                    <div className="keyboard-container mb-4">
+                      <div className="d-flex flex-wrap justify-content-center gap-2">
+                        {alphabet.map((letter) => (
+                          <button
+                            key={letter}
+                            className="btn keyboard-key"
+                            style={{
+                              width: "50px",
+                              height: "50px",
+                              fontSize: "1.25rem",
+                              fontWeight: "600",
+                              backgroundColor: frenchWhite,
+                              color: frenchBlue,
+                              border: `2px solid ${frenchBlue}`,
+                              borderRadius: "10px",
+                              transition: "all 0.2s ease"
+                            }}
+                            onMouseOver={(e) => e.target.style.transform = "scale(1.1)"}
+                            onMouseOut={(e) => e.target.style.transform = "scale(1)"}
+                            onClick={() => handleLetterClick(letter)}
+                          >
+                            {letter}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
   
-                  <div className="action-buttons d-flex justify-content-center gap-3">
-                    <button 
-                      className="btn btn-lg px-4 py-2"
-                      style={{
-                        backgroundColor: frenchRed,
-                        color: frenchWhite,
-                        borderRadius: "10px"
-                      }}
-                      onClick={handlePass}
-                    >
-                      <i className="bi bi-arrow-clockwise me-2"></i>
-                      Pass
-                    </button>
-                    <button 
-                      className="btn btn-lg px-4 py-2"
-                      style={{
-                        backgroundColor: frenchBlue,
-                        color: frenchWhite,
-                        borderRadius: "10px"
-                      }}
-                      onClick={handleSubmit}
-                      disabled={localRevealed.some(letter => letter === "")}
-                    >
-                      <i className="bi bi-check-circle me-2"></i>
-                      Submit
-                    </button>
-                  </div>
-                </div>
-  
-                {/* Enhanced Hint System */}
-                <div className="hint-container mt-5">
-                  {!showHint ? (
-                    <div className="text-center">
+                    <div className="action-buttons d-flex justify-content-center gap-3 mb-4">
                       <button 
                         className="btn btn-lg px-4 py-2"
                         style={{
-                          backgroundColor: "#17a2b8",
+                          backgroundColor: frenchRed,
                           color: frenchWhite,
                           borderRadius: "10px"
                         }}
-                        onClick={() => setShowHint(true)}
+                        onClick={handlePass}
                       >
-                        <i className="bi bi-lightbulb me-2"></i>
-                        Reveal Hint ({currentQuestion.hints.length} available)
+                        <i className="bi bi-arrow-clockwise me-2"></i>
+                        Pass
+                      </button>
+                      <button 
+                        className="btn btn-lg px-4 py-2"
+                        style={{
+                          backgroundColor: frenchBlue,
+                          color: frenchWhite,
+                          borderRadius: "10px"
+                        }}
+                        onClick={handleSubmit}
+                        disabled={localRevealed.some(letter => letter === "")}
+                      >
+                        <i className="bi bi-check-circle me-2"></i>
+                        Submit
                       </button>
                     </div>
-                  ) : (
-                    <div className="hint-card shadow-lg p-4 rounded-3" style={{
-                      backgroundColor: frenchWhite,
-                      border: `2px solid ${frenchBlue}`,
-                      borderRadius: "15px"
-                    }}>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h4 className="mb-0" style={{ color: frenchBlue }}>
-                          <i className="bi bi-lightbulb-fill me-2"></i>
-                          Hint {currentHintIndex + 1}/{currentQuestion.hints.length}
-                        </h4>
-                        <div className="hint-navigation">
-                          {currentHintIndex > 0 && (
-                            <button
-                              className="btn btn-sm me-2"
-                              style={{ backgroundColor: frenchBlue, color: frenchWhite }}
-                              onClick={() => setCurrentHintIndex(currentHintIndex - 1)}
-                            >
-                              <i className="bi bi-chevron-left"></i>
-                            </button>
-                          )}
-                          {currentHintIndex < currentQuestion.hints.length - 1 && (
+  
+                    {/* Enhanced Hint System */}
+                    <div className="hint-container">
+                      {!showHint ? (
+                        <div className="text-center">
+                          <button 
+                            className="btn btn-lg px-4 py-2"
+                            style={{
+                              backgroundColor: "#17a2b8",
+                              color: frenchWhite,
+                              borderRadius: "10px"
+                            }}
+                            onClick={() => setShowHint(true)}
+                          >
+                            <i className="bi bi-lightbulb me-2"></i>
+                            Reveal Hint ({currentQuestion.hints.length} available)
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="hint-card shadow-lg p-4 rounded-3" style={{
+                          backgroundColor: frenchWhite,
+                          border: `2px solid ${frenchBlue}`,
+                          borderRadius: "15px"
+                        }}>
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h4 className="mb-0" style={{ color: frenchBlue }}>
+                              <i className="bi bi-lightbulb-fill me-2"></i>
+                              Hint {currentHintIndex + 1}/{currentQuestion.hints.length}
+                            </h4>
+                            <div className="hint-navigation">
+                              {currentHintIndex > 0 && (
+                                <button
+                                  className="btn btn-sm me-2"
+                                  style={{ backgroundColor: frenchBlue, color: frenchWhite }}
+                                  onClick={() => setCurrentHintIndex(currentHintIndex - 1)}
+                                >
+                                  <i className="bi bi-chevron-left"></i>
+                                </button>
+                              )}
+                              {currentHintIndex < currentQuestion.hints.length - 1 && (
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ backgroundColor: frenchBlue, color: frenchWhite }}
+                                  onClick={() => setCurrentHintIndex(currentHintIndex + 1)}
+                                >
+                                  <i className="bi bi-chevron-right"></i>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="hint-content fs-5" style={{ color: frenchBlue }}>
+                            {currentQuestion.hints[currentHintIndex]}
+                          </div>
+                          <div className="text-end mt-3">
                             <button
                               className="btn btn-sm"
-                              style={{ backgroundColor: frenchBlue, color: frenchWhite }}
-                              onClick={() => setCurrentHintIndex(currentHintIndex + 1)}
+                              style={{ backgroundColor: frenchRed, color: frenchWhite }}
+                              onClick={() => setShowHint(false)}
                             >
-                              <i className="bi bi-chevron-right"></i>
+                              <i className="bi bi-x-lg me-2"></i>
+                              Close Hints
                             </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="hint-content fs-5" style={{ color: frenchBlue }}>
-                        {currentQuestion.hints[currentHintIndex]}
-                      </div>
-                      <div className="text-end mt-3">
-                        <button
-                          className="btn btn-sm"
-                          style={{ backgroundColor: frenchRed, color: frenchWhite }}
-                          onClick={() => setShowHint(false)}
-                        >
-                          <i className="bi bi-x-lg me-2"></i>
-                          Close Hints
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
+  
             </div>
           </div>
-  
-          {/* Incorrect Letter Modal */}
-          {showWrongModal && (
-            <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-              <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content rounded-3" style={{ border: `3px solid ${frenchRed}` }}>
-                  <div className="modal-header" style={{ backgroundColor: frenchRed, color: frenchWhite }}>
-                    <h5 className="modal-title">
-                      <i className="bi bi-x-octagon-fill me-2"></i>
-                      Incorrect Letter
-                    </h5>
-                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowWrongModal(false)}></button>
-                  </div>
-                  <div className="modal-body">
-                    <p className="fs-5">
-                      The letter <strong className="text-danger">{wrongLetter}</strong> is not in the correct position.
-                    </p>
-                    <p className="text-muted">Keep trying! You've got this!</p>
-                  </div>
-                  <div className="modal-footer">
-                    <button 
-                      className="btn btn-secondary" 
-                      onClick={() => setShowWrongModal(false)}
-                      style={{ borderRadius: "8px" }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       );
     } else if (activeMatch.status === "completed") {
@@ -967,7 +939,6 @@ const HeadToHeadImagePuzzleMatch = () => {
           </div>
         </div>
       );
-   
     }
   }
 

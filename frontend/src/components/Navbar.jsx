@@ -1,24 +1,28 @@
-// components/Navbar.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { IoMdSettings } from "react-icons/io";
-import { FiLogOut } from "react-icons/fi";
+import { FiLogOut, FiChevronDown } from "react-icons/fi";
 
 // French flag color palette
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 
 const Navbar = () => {
-  const { isAuthenticated, logout, user, updateUserdata  } = useAuth(); // assuming your context provides `user`
+  const { isAuthenticated, logout, user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [listeningDropdownOpen, setListeningDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const listeningDropdownRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
+      }
+      if (listeningDropdownRef.current && !listeningDropdownRef.current.contains(event.target)) {
+        setListeningDropdownOpen(false);
       }
     };
 
@@ -36,16 +40,11 @@ const Navbar = () => {
     navigate("/login");
   };
 
-  // Determine profile image URL; fallback if not available
   const profileImageUrl =
     user && user.profileImage
       ? user.profileImage
       : "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
 
-
-  console.log("userdata:", user);
-
-  // Common style for NavLink
   const navLinkStyle = ({ isActive }) => ({
     color: isActive ? frenchRed : frenchBlue,
     fontWeight: isActive ? "600" : "400",
@@ -55,15 +54,20 @@ const Navbar = () => {
     transition: "color 0.2s ease-in-out",
   });
 
+  const listeningNavLinkStyle = ({ isActive }) => ({
+    ...navLinkStyle({ isActive }),
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  });
+
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
       <div className="container-fluid">
-        {/* Logo / Brand */}
         <NavLink className="navbar-brand" to="/" style={{ paddingLeft: "1rem" }}>
           <img src="../Logo.png" width={100} alt="Company Logo" className="custom-logo" />
         </NavLink>
 
-        {/* Mobile Toggle */}
         <button
           className="navbar-toggler"
           type="button"
@@ -77,7 +81,6 @@ const Navbar = () => {
           <span className="navbar-toggler-icon" />
         </button>
 
-        {/* Collapsible Nav Items */}
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav ms-auto me-4">
             {isAuthenticated ? (
@@ -92,16 +95,47 @@ const Navbar = () => {
                     Speaking
                   </NavLink>
                 </li>
-                <li className="nav-item">
-                  <NavLink className="nav-link" style={navLinkStyle} to="/listeningtraining">
-                    Listening Training
-                  </NavLink>
-                </li>
-                <li className="nav-item">
-                  <NavLink className="nav-link" style={navLinkStyle} to="/listeningmock">
+                
+                {/* Listening Dropdown */}
+                <li className="nav-item dropdown" ref={listeningDropdownRef}>
+                  <button
+                    className="nav-link d-flex align-items-center"
+                    style={listeningNavLinkStyle({ isActive: false })}
+                    onClick={() => setListeningDropdownOpen(!listeningDropdownOpen)}
+                  >
                     Listening
-                  </NavLink>
+                    <FiChevronDown 
+                      size={18} 
+                      style={{ 
+                        transition: "transform 0.2s",
+                        transform: listeningDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" 
+                      }} 
+                    />
+                  </button>
+                  <ul className={`dropdown-menu ${listeningDropdownOpen ? "show" : ""}`}>
+                    <li>
+                      <NavLink 
+                        className="dropdown-item" 
+                        to="/listeningtraining"
+                        style={navLinkStyle}
+                        onClick={() => setListeningDropdownOpen(false)}
+                      >
+                        Listening Training
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink 
+                        className="dropdown-item" 
+                        to="/listeningmock"
+                        style={navLinkStyle}
+                        onClick={() => setListeningDropdownOpen(false)}
+                      >
+                        Listening Mock
+                      </NavLink>
+                    </li>
+                  </ul>
                 </li>
+
                 <li className="nav-item">
                   <NavLink className="nav-link" style={navLinkStyle} to="/readingmock">
                     Reading
@@ -117,6 +151,11 @@ const Navbar = () => {
                     Head2Head
                   </NavLink>
                 </li>
+                <li className="nav-item">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/about">
+                    About Us
+                  </NavLink>
+                </li>
                 <div className="dropdown" ref={dropdownRef}>
                   <button
                     className="btn btn-link dropdown-toggle d-flex align-items-center"
@@ -126,11 +165,10 @@ const Navbar = () => {
                     aria-expanded={dropdownOpen}
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                   >
-                    {/* Display user's profile image */}
                     <img
                       src={profileImageUrl}
                       alt="Profile"
-                      key={profileImageUrl} // Force re-render when URL changes
+                      key={profileImageUrl}
                       style={{
                         width: "40px",
                         height: "40px",
@@ -140,8 +178,6 @@ const Navbar = () => {
                       }}
                     />
                   </button>
-
-                  {/* Dropdown menu */}
                   <ul
                     className={`dropdown-menu dropdown-menu-end shadow-lg ${dropdownOpen ? "show" : ""}`}
                     aria-labelledby="dropdownMenuButton"
@@ -178,6 +214,11 @@ const Navbar = () => {
                 <li className="nav-item">
                   <NavLink className="nav-link" style={navLinkStyle} to="/">
                     Home
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink className="nav-link" style={navLinkStyle} to="/about">
+                    About Us
                   </NavLink>
                 </li>
                 <li className="nav-item">

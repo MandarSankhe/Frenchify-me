@@ -5,325 +5,387 @@ import { BookOpen, UserCheck, ClipboardList } from "lucide-react";
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
+const lightBlue = "#E6F0FA";
+const lightRed = "#FDECEA";
 
-const styles = {
-  // Updated hero section with grey gradient background and adjusted text colors
-  heroSection: {
-    background: `linear-gradient(135deg, #f7f7f7 40%, #e2e2e2 60%)`,
-    padding: "4rem 2rem",
-    borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-    marginBottom: "3rem",
-  },
-  heroHeading: {
-    color: "#333333",
-    fontWeight: "bold",
-    fontSize: "2.5rem",
-    textShadow: "1px 1px 3px rgba(0,0,0,0.1)",
-  },
-  heroSubHeading: {
-    color: "#555555",
-    fontSize: "1.25rem",
-    marginBottom: "1.5rem",
-  },
-  btnPrimary: {
-    backgroundColor: frenchRed,
-    borderColor: frenchRed,
-    color: frenchWhite,
-    fontWeight: "bold",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "4px",
-    transition: "background-color 0.3s",
-  },
-  btnSecondary: {
-    backgroundColor: frenchBlue,
-    borderColor: frenchBlue,
-    color: frenchWhite,
-    fontWeight: "bold",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "4px",
-    transition: "background-color 0.3s",
-  },
-  sectionHeading: {
-    color: frenchBlue,
-    fontWeight: "bold",
-    marginBottom: "2rem",
-    textAlign: "center",
-    fontSize: "2rem",
-  },
-  serviceBox: {
-    border: `2px solid ${frenchBlue}`,
-    borderRadius: "8px",
-    padding: "1.5rem",
-    height: "100%",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-    transition: "transform 0.3s",
-    backgroundColor: "#fff",
-  },
-  serviceBoxHover: {
-    transform: "translateY(-5px)",
-  },
-  teamImage: {
-    maxWidth: "70%",
-    borderRadius: "50%",
-    border: `4px solid ${frenchRed}`,
-    marginBottom: "10px",
-    transition: "transform 0.3s",
-  },
-  teamImageHover: {
-    transform: "scale(1.05)",
-  },
-  teamName: {
-    color: frenchBlue,
-    fontWeight: "bold",
-    marginTop: "0.5rem",
-  },
-  contactLabel: {
-    color: frenchRed,
-    fontWeight: "500",
-  },
-  contactBtn: {
-    backgroundColor: frenchRed,
-    borderColor: frenchRed,
-    color: frenchWhite,
-    fontWeight: "bold",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "4px",
-    transition: "background-color 0.3s",
-  },
-  contactForm: {
-    backgroundColor: "#f8f9fa",
-    padding: "2rem",
-    borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-  },
-};
+const Home = () => {
+  const services = [
+    {
+      icon: <BookOpen size={48} color={frenchBlue} className="mb-3" />,
+      title: "Comprehensive Exams",
+      description: "Our exams cover every topic you need for mastery, ensuring you're well-prepared.",
+    },
+    {
+      icon: <UserCheck size={48} color={frenchRed} className="mb-3" />,
+      title: "Personalized Learning",
+      description: "Tailored courses designed to meet your unique needs and learning pace.",
+    },
+    {
+      icon: <ClipboardList size={48} color={frenchBlue} className="mb-3" />,
+      title: "Mock Exams",
+      description: "Practice exams to help you excel and build confidence before the real tests.",
+    },
+  ];
 
-class Home extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      serviceBoxHoverIndex: null,
-      teamHoverIndex: null,
-    };
-  }
+  const teamMembers = [
+    { name: "Mandar", image: "mandaricon.png", linkedin: "https://www.linkedin.com/in/mandar-sankhe" },
+    { name: "Rachna", image: "rachnaicon.png", linkedin: "https://www.linkedin.com/in/rachna-poonit-6a3b4b1ab/" },
+    { name: "Vipul", image: "vipulicon.png", linkedin: "https://www.linkedin.com/in/thatvipulprajapati" },
+  ];
 
-  handleServiceMouseEnter(index) {
-    this.setState({ serviceBoxHoverIndex: index });
-  }
-
-  handleServiceMouseLeave() {
-    this.setState({ serviceBoxHoverIndex: null });
-  }
-
-  handleTeamMouseEnter(index) {
-    this.setState({ teamHoverIndex: index });
-  }
-
-  handleTeamMouseLeave() {
-    this.setState({ teamHoverIndex: null });
-  }
-
-  render() {
-    const services = [
-      {
-        icon: <BookOpen size={48} color={frenchBlue} className="mb-3" />,
-        title: "Comprehensive Exams",
-        description:
-          "Our exams cover every topic you need for mastery, ensuring you're well-prepared.",
-        borderColor: frenchBlue,
-      },
-      {
-        icon: <UserCheck size={48} color={frenchRed} className="mb-3" />,
-        title: "Personalized Learning",
-        description:
-          "Tailored courses designed to meet your unique needs and learning pace.",
-        borderColor: frenchRed,
-      },
-      {
-        icon: <ClipboardList size={48} color={frenchBlue} className="mb-3" />,
-        title: "Mock Exams",
-        description:
-          "Practice exams to help you excel and build confidence before the real tests.",
-        borderColor: frenchBlue,
-      },
-    ];
-
-    // Team members with their LinkedIn URLs
-    const teamMembers = [
-      { name: "Mandar", image: "mandaricon.png", linkedin: "https://www.linkedin.com/in/mandar-sankhe" },
-      { name: "Rachna", image: "rachnaicon.png", linkedin: "https://www.linkedin.com/in/rachna-poonit-6a3b4b1ab/" },
-      { name: "Vipul", image: "vipulicon.png", linkedin: "https://www.linkedin.com/in/thatvipulprajapati" },
-    ];
-
-    return (
-      <div className="container py-5" style={{ backgroundColor: frenchWhite }}>
-        {/* Hero Section */}
-        <div style={styles.heroSection} className="mb-5">
+  return (
+    <div className="container-fluid px-0">
+      {/* Hero Section */}
+      <section 
+        className="py-5" 
+        style={{ 
+          background: `linear-gradient(135deg, ${lightBlue} 0%, ${frenchWhite} 100%)`,
+          position: "relative",
+          overflow: "hidden"
+        }}
+      >
+        <div className="container py-5">
           <div className="row align-items-center">
-            <div className="col-md-6 text-center text-md-start">
-              <h1 style={styles.heroHeading}>Discover & Learn French</h1>
-              <p style={styles.heroSubHeading}>
+            <div className="col-lg-6 mb-5 mb-lg-0">
+              <h1 
+                className="display-4 fw-bold mb-4" 
+                style={{ color: frenchBlue, lineHeight: 1.3 }}
+              >
+                Discover & Learn French
+              </h1>
+              <p 
+                className="lead mb-4" 
+                style={{ color: frenchBlue, fontSize: "1.25rem" }}
+              >
                 Your ultimate platform for French Learning
               </p>
-              <div>
-                <button style={styles.btnPrimary} className="btn me-2">
+              <div className="d-flex flex-wrap gap-3">
+                <button 
+                  className="btn btn-lg px-4 py-3 fw-bold"
+                  style={{ 
+                    backgroundColor: frenchRed,
+                    color: frenchWhite,
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 15px rgba(239, 65, 53, 0.3)"
+                  }}
+                >
                   Get Started
                 </button>
-                <button style={styles.btnSecondary} className="btn">
-                  Services
+                <button 
+                  className="btn btn-lg px-4 py-3 fw-bold"
+                  style={{ 
+                    backgroundColor: frenchBlue,
+                    color: frenchWhite,
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 15px rgba(0, 85, 164, 0.3)"
+                  }}
+                >
+                  Our Services
                 </button>
               </div>
             </div>
-            <div className="col-md-6 text-center">
-              <img
-                src="animated-logo.gif"
-                alt="Animated Logo"
-                className="img-fluid"
-                style={{ maxWidth: "80%" }}
-              />
+            <div className="col-lg-6">
+              <div className="position-relative">
+                <div 
+                  className="position-absolute top-0 start-0 w-100 h-100 rounded-4"
+                  style={{ 
+                    backgroundColor: lightRed,
+                    transform: "rotate(5deg)",
+                    zIndex: 0
+                  }}
+                ></div>
+                <img
+                  src="animated-logo.gif"
+                  alt="Animated Logo"
+                  className="img-fluid position-relative rounded-4"
+                  style={{ 
+                    zIndex: 1,
+                    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)"
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Our Services */}
-        <div className="mb-5">
-          <h2 style={styles.sectionHeading}>Our Services</h2>
-          <div className="row">
+      {/* Services Section */}
+      <section className="py-5" style={{ backgroundColor: frenchWhite }}>
+        <div className="container py-4">
+          <h2 
+            className="text-center mb-5 fw-bold" 
+            style={{ 
+              color: frenchBlue,
+              fontSize: "2.5rem",
+              position: "relative",
+              display: "inline-block",
+              margin: "0 auto",
+              paddingBottom: "10px"
+            }}
+          >
+            Our Services
+            <span 
+              style={{ 
+                position: "absolute",
+                bottom: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "80px",
+                height: "4px",
+                backgroundColor: frenchRed,
+                borderRadius: "2px"
+              }}
+            ></span>
+          </h2>
+          
+          <div className="row g-4 mt-4">
             {services.map((service, index) => (
-              <div key={index} className="col-md-4 mb-4">
-                <div
-                  style={{
-                    ...styles.serviceBox,
-                    border: `2px solid ${service.borderColor}`,
-                    ...(this.state.serviceBoxHoverIndex === index
-                      ? styles.serviceBoxHover
-                      : {}),
+              <div key={index} className="col-md-4">
+                <div 
+                  className="h-100 p-4 rounded-4 transition-all"
+                  style={{ 
+                    backgroundColor: index % 2 === 0 ? lightBlue : lightRed,
+                    border: `2px solid ${index % 2 === 0 ? frenchBlue : frenchRed}`,
+                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.05)",
+                    transition: "transform 0.3s, box-shadow 0.3s",
+                    cursor: "pointer",
+                    transform: "translateY(0)"
                   }}
-                  className="card text-center p-3"
-                  onMouseEnter={() => this.handleServiceMouseEnter(index)}
-                  onMouseLeave={() => this.handleServiceMouseLeave()}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-10px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                 >
-                  {service.icon}
-                  <h5>{service.title}</h5>
-                  <p>{service.description}</p>
+                  <div className="text-center mb-4">
+                    {service.icon}
+                  </div>
+                  <h3 
+                    className="text-center mb-3 fw-bold" 
+                    style={{ color: index % 2 === 0 ? frenchBlue : frenchRed }}
+                  >
+                    {service.title}
+                  </h3>
+                  <p 
+                    className="text-center mb-0" 
+                    style={{ color: frenchBlue }}
+                  >
+                    {service.description}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Our Team */}
-        <div className="mb-5">
-          <h2 style={styles.sectionHeading}>Our Team</h2>
-          <div className="row justify-content-center">
+      {/* Team Section */}
+      <section className="py-5" style={{ backgroundColor: lightBlue }}>
+        <div className="container py-4">
+          <h2 
+            className="text-center mb-5 fw-bold" 
+            style={{ 
+              color: frenchBlue,
+              fontSize: "2.5rem",
+              position: "relative",
+              display: "inline-block",
+              margin: "0 auto",
+              paddingBottom: "10px"
+            }}
+          >
+            Our Team
+            <span 
+              style={{ 
+                position: "absolute",
+                bottom: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "80px",
+                height: "4px",
+                backgroundColor: frenchRed,
+                borderRadius: "2px"
+              }}
+            ></span>
+          </h2>
+          
+          <div className="row justify-content-center g-4 mt-4">
             {teamMembers.map((member, index) => (
-              <div
-                key={index}
-                className="col-6 col-md-4 text-center mb-4"
-                onMouseEnter={() => this.handleTeamMouseEnter(index)}
-                onMouseLeave={() => this.handleTeamMouseLeave()}
-              >
+              <div key={index} className="col-md-4 col-sm-6 text-center">
                 <a 
                   href={member.linkedin} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  style={{ textDecoration: "none" }}
+                  className="text-decoration-none"
                 >
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="img-fluid"
-                    style={{
-                      ...styles.teamImage,
-                      ...(this.state.teamHoverIndex === index
-                        ? styles.teamImageHover
-                        : {}),
-                    }}
-                  />
-                  <h5 style={styles.teamName}>{member.name}</h5>
+                  <div className="p-4">
+                    <div className="position-relative d-inline-block">
+                      <div 
+                        className="position-absolute top-0 start-0 w-100 h-100 rounded-circle"
+                        style={{ 
+                          backgroundColor: frenchRed,
+                          transform: "rotate(5deg)",
+                          opacity: 0.1
+                        }}
+                      ></div>
+                      <img
+                        src={member.image}
+                        alt={member.name}
+                        className="img-fluid rounded-circle border-4"
+                        style={{ 
+                          width: "200px",
+                          height: "200px",
+                          objectFit: "cover",
+                          border: `4px solid ${frenchBlue}`,
+                          transition: "transform 0.3s",
+                          transform: "scale(1)"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      />
+                    </div>
+                    <h3 
+                      className="mt-4 mb-2 fw-bold" 
+                      style={{ color: frenchBlue }}
+                    >
+                      {member.name}
+                    </h3>
+                    <div 
+                      className="d-inline-flex align-items-center"
+                      style={{ color: frenchRed }}
+                    >
+                      <span className="me-2">View Profile</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path fillRule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                      </svg>
+                    </div>
+                  </div>
                 </a>
               </div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Contact Us */}
-        <div>
-          <h2 style={styles.sectionHeading}>Contact Us</h2>
+      {/* Contact Section */}
+      <section className="py-5" style={{ backgroundColor: frenchWhite }}>
+        <div className="container py-4">
           <div className="row justify-content-center">
-            <div className="col-md-8">
-              <form style={styles.contactForm}>
-                <div className="mb-3">
-                  <label
-                    htmlFor="name"
-                    style={styles.contactLabel}
-                    className="form-label"
-                  >
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    className="form-control"
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label
-                    htmlFor="email"
-                    style={styles.contactLabel}
-                    className="form-label"
-                  >
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    className="form-control"
-                    placeholder="Your email"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label
-                    htmlFor="message"
-                    style={styles.contactLabel}
-                    className="form-label"
-                  >
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    className="form-control"
-                    rows="4"
-                    placeholder="Your message"
-                  ></textarea>
-                </div>
-                <button type="submit" style={styles.contactBtn} className="btn">
-                  Send Message
-                </button>
-              </form>
+            <div className="col-lg-8">
+              <div 
+                className="p-4 p-md-5 rounded-4 shadow-sm"
+                style={{ 
+                  backgroundColor: lightRed,
+                  border: `2px solid ${frenchRed}`,
+                }}
+              >
+                <h2 
+                  className="text-center mb-4 fw-bold" 
+                  style={{ 
+                    color: frenchBlue,
+                    fontSize: "2.5rem"
+                  }}
+                >
+                  Contact Us
+                </h2>
+                
+                <form>
+                  <div className="mb-4">
+                    <label 
+                      htmlFor="name" 
+                      className="form-label fw-bold" 
+                      style={{ color: frenchBlue }}
+                    >
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      className="form-control py-3"
+                      placeholder="Your name"
+                      style={{ 
+                        borderColor: frenchBlue,
+                        borderRadius: "8px"
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label 
+                      htmlFor="email" 
+                      className="form-label fw-bold" 
+                      style={{ color: frenchBlue }}
+                    >
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      className="form-control py-3"
+                      placeholder="Your email"
+                      style={{ 
+                        borderColor: frenchBlue,
+                        borderRadius: "8px"
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label 
+                      htmlFor="message" 
+                      className="form-label fw-bold" 
+                      style={{ color: frenchBlue }}
+                    >
+                      Message
+                    </label>
+                    <textarea
+                      id="message"
+                      className="form-control py-3"
+                      rows="5"
+                      placeholder="Your message"
+                      style={{ 
+                        borderColor: frenchBlue,
+                        borderRadius: "8px"
+                      }}
+                    ></textarea>
+                  </div>
+                  
+                  <div className="text-center">
+                    <button 
+                      type="submit" 
+                      className="btn btn-lg px-5 py-3 fw-bold"
+                      style={{ 
+                        backgroundColor: frenchBlue,
+                        color: frenchWhite,
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 15px rgba(0, 85, 164, 0.3)"
+                      }}
+                    >
+                      Send Message
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Donation Section */}
-        <div className="row align-items-center mt-5 py-4 px-3" style={{
-          background: `linear-gradient(135deg, ${frenchBlue} 30%, ${frenchRed} 100%)`,
-          borderRadius: "8px",
-          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          color: frenchWhite
-        }}>
-          {/* Left Column - Message & Icon */}
-          <div className="col-md-8 text-md-start text-center">
-            <h3 style={{ fontWeight: "bold" }}>Support Our Mission</h3>
-            <p style={{ fontSize: "1.1rem", marginBottom: 0 }}>
-              Help us continue creating high-quality French learning resources. Every contribution counts!
-            </p>
-          </div>
-
-          {/* Right Column - Donate Button */}
-          <div className="col-md-4 text-md-end text-center mt-3 mt-md-0">
+      {/* Donation Section */}
+      <section className="py-5">
+        <div className="container">
+          <div 
+            className="row align-items-center p-4 p-md-5 rounded-4"
+            style={{
+              background: `linear-gradient(135deg, ${frenchBlue} 0%, ${frenchRed} 100%)`,
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
+              color: frenchWhite
+            }}
+          >
+            <div className="col-md-8 mb-4 mb-md-0">
+              <h3 className="fw-bold mb-3" style={{ fontSize: "1.75rem" }}>Support Our Mission</h3>
+              <p className="mb-0" style={{ fontSize: "1.1rem", lineHeight: 1.6 }}>
+                Help us continue creating high-quality French learning resources. Every contribution counts!
+              </p>
+            </div>
+            
+            <div className="col-md-4 text-center text-md-end">
             <button 
               className="btn btn-light fw-bold px-4 py-2"
               style={{
@@ -339,14 +401,12 @@ class Home extends React.Component {
             >
               Donate Now ❤️
             </button>
+            </div>
           </div>
         </div>
-
-
-
-      </div>
-    );
-  }
-}
+      </section>
+    </div>
+  );
+};
 
 export default Home;

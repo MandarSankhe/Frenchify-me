@@ -4,13 +4,23 @@ import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import LoadingSpinner from "./LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
+import { Helmet } from "react-helmet";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks"; // Import remark-breaks
 
 // French flag colors
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
 
-// Helper to return an exam image based on level
+// Style constants
+const customStyles = {
+  fontFamily: "'Inter', sans-serif",
+  borderRadius: "12px",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  shadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
+};
+
 const getExamImage = (level) => {
   switch (level) {
     case "Beginner":
@@ -24,117 +34,10 @@ const getExamImage = (level) => {
   }
 };
 
-// Helper to return a border style based on exam level
-const getLevelStyle = (level) => {
-  switch (level) {
-    case "Beginner":
-      return { border: `2px solid ${frenchBlue}` };
-    case "Intermediate":
-      return { border: `2px solid ${frenchBlue}`, backgroundColor: "#f8f9fa" };
-    case "Advanced":
-      return { border: `2px solid ${frenchRed}` };
-    default:
-      return { border: "2px solid #6c757d" };
-  }
-};
-
-// Dynamic FeedbackDisplay Component
-const FeedbackDisplay = ({ feedback }) => {
-  if (!feedback) return null;
-
-  // Remove any <think> blocks (and their content)
-  const feedbackWithoutThink = feedback.replace(/<think>[\s\S]*?<\/think>/gi, "");
-
-  // Extract overall score.
-  // This regex now accepts optional asterisks around "Score:" and supports decimals.
-  let extractedScore = null;
-  const scoreMatch = feedbackWithoutThink.match(/(?:\*+)?Score:(?:\*+)?\s*([0-9]+\.?[0-9]*\/10)/i);
-  if (scoreMatch) {
-    extractedScore = scoreMatch[1];
-  }
-
-  // Split feedback into lines using <br> as a delimiter.
-  const lines = feedbackWithoutThink
-    .split(/<br\s*\/?>/gi)
-    .map(line => line.trim())
-    .filter(Boolean);
-
-  // Containers for dynamic sections and overall commentary.
-  const sections = {};
-  let currentSection = null;
-  const commentary = [];
-
-  // Helper to extract header tokens from a line (anything between **)
-  const processLineForHeaders = (line) => {
-    const headerRegex = /\*\*(.+?)\*\*/g;
-    let match;
-    const headerTokens = [];
-    let modifiedLine = line;
-    while ((match = headerRegex.exec(line)) !== null) {
-      const token = match[1].trim();
-      headerTokens.push(token);
-      // Remove this header token from the line.
-      modifiedLine = modifiedLine.replace(match[0], "").trim();
-    }
-    return { headerTokens, modifiedLine };
-  };
-
-  // Process each line dynamically.
-  lines.forEach((line) => {
-    const { headerTokens, modifiedLine } = processLineForHeaders(line);
-    if (headerTokens.length > 0) {
-      headerTokens.forEach((token) => {
-        // If the token contains "score:", extract the score and do not treat it as a header.
-        if (/score:/i.test(token)) {
-          const innerScoreMatch = token.match(/Score:\s*([0-9]+\.?[0-9]*\/10)/i);
-          if (innerScoreMatch) {
-            extractedScore = innerScoreMatch[1];
-          }
-          // Do not update currentSection for a score token.
-        } else {
-          // Otherwise, treat this token as a new section header.
-          currentSection = token;
-          if (!sections[currentSection]) {
-            sections[currentSection] = [];
-          }
-        }
-      });
-    }
-    // If there is remaining text, add it under the current section (if any), or as overall commentary.
-    if (modifiedLine) {
-      if (currentSection) {
-        sections[currentSection].push(modifiedLine);
-      } else {
-        commentary.push(modifiedLine);
-      }
-    }
-  });
-
-  return (
-    <div>
-      {extractedScore && (
-        <h4 style={{ color: frenchRed, marginBottom: "1rem" }}>
-          Score: {extractedScore}
-        </h4>
-      )}
-      {Object.entries(sections).map(([section, items]) => (
-        <div key={section} className="mb-3">
-          <h5 style={{ color: frenchBlue }}>{section}</h5>
-          <ul>
-            {items.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-      {commentary.length > 0 && (
-        <div className="mb-3">
-          <h5 style={{ color: frenchBlue }}>Overall Comments</h5>
-          <p>{commentary.join(" ")}</p>
-        </div>
-      )}
-    </div>
-  );
+const levelBadges = {
+  Beginner: { text: "A1-A2", color: frenchBlue },
+  Intermediate: { text: "B1-B2", color: "#FFD700" },
+  Advanced: { text: "C1-C2", color: frenchRed },
 };
 
 const WritingMock = () => {
@@ -143,86 +46,68 @@ const WritingMock = () => {
   const [selectedExam, setSelectedExam] = useState(null);
   const [currentExercise, setCurrentExercise] = useState(null);
   const [exerciseIndex, setExerciseIndex] = useState(0);
+  // We use one state value "response" to hold the text from both physical and onscreen keyboards.
   const [response, setResponse] = useState("");
   const [wordCount, setWordCount] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+  // We also maintain a controlled value for the on-screen keyboard.
   const [keyboardInput, setKeyboardInput] = useState("");
-
-  // Create a ref for the on-screen keyboard
   const keyboardRef = useRef(null);
 
   const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
   const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
-  // Handle input from on-screen keyboard
-  const handleKeyboardChange = (input) => {
-    setKeyboardInput(input);
-    setResponse(input);
-    setWordCount(countWords(input));
-  };
-
-  // Function to count the number of words
-  const countWords = (text) => {
-    return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
-  };
-
-  // Handle input from the physical keyboard
-  const handlePhysicalKeyboardInput = (e) => {
-    const newValue = e.target.value;
-    setResponse(newValue);
-    setKeyboardInput(newValue);
-    setWordCount(countWords(newValue));
-    if (keyboardRef.current) {
-      keyboardRef.current.setInput(newValue);
-    }
-  };
-
-  // Fetch all writing exams
+  // Fetch exams
   useEffect(() => {
-    const fetchAllTCFWritings = async () => {
-      const query = `
-        query GetAllTCFWritings {
-          tcfWritings {
-            id
-            title
-            level
-            exercise1
-            exercise2
-            exercise3
-          }
-        }
-      `;
+    const fetchExams = async () => {
+      const query = `{ tcfWritings { id title level exercise1 exercise2 exercise3 } }`;
       try {
         const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
         });
-        const result = await res.json();
-        setAllExams(result.data.tcfWritings);
+        const { data } = await res.json();
+        setAllExams(data.tcfWritings);
       } catch (error) {
-        console.error("Error fetching TCF writings:", error);
+        console.error("Error fetching exams:", error);
       }
     };
-
-    fetchAllTCFWritings();
+    fetchExams();
   }, []);
 
-  const handleExamSelection = (examId) => {
-    const exam = allExams.find((e) => e.id === examId);
-    setSelectedExam(exam);
-    setExerciseIndex(0);
-    setFeedback("");
-    setCurrentExercise(exam.exercise1);
-    setWordCount(0);
+  // Update both response and the keyboard's input when the on-screen keyboard changes.
+  const handleKeyboardChange = (input) => {
+    setKeyboardInput(input);
+    setResponse(input);
+    setWordCount(input.trim().split(/\s+/).filter(Boolean).length);
   };
 
-  // Add this to your existing handleSubmitExercise function
-const handleSubmitExercise = async () => {
-  setLoading(true);
-  try {
-    const prompt = `
+  // When the user types with a physical keyboard, update both states and inform the on-screen keyboard.
+  const handleTextareaChange = (e) => {
+    const newValue = e.target.value;
+    setResponse(newValue);
+    setWordCount(newValue.trim().split(/\s+/).filter(Boolean).length);
+    setKeyboardInput(newValue);
+    if (keyboardRef.current) {
+      keyboardRef.current.setInput(newValue);
+    }
+  };
+
+  const handleExamSelect = (exam) => {
+    setSelectedExam(exam);
+    setCurrentExercise(exam.exercise1);
+    setExerciseIndex(0);
+    setFeedback("");
+    setResponse("");
+    setKeyboardInput("");
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const prompt = `
       Evaluate the following TCF French Writing Test answer based on the question:
       Question: ${currentExercise}
       Answer: ${response}
@@ -234,221 +119,295 @@ const handleSubmitExercise = async () => {
       - **Score:**
       Conclude with a score out of 10. Above 4 sections are must.
     `;
+      const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const { feedback } = await res.json();
+      setFeedback(feedback);
 
-    const res = await fetch(`${API_ENDPOINT}/generate-feedback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
+      // Extract the score: first remove any <br> tags and then match "Score: <number>/10"
+      console.log("Feedback:", feedback);
+      const scoreMatch = feedback.match(/([\d.]+)\s*\/\s*10/);
+      console.log("Score Match:", scoreMatch);
+      const score = scoreMatch?.[1] || "0";
+      console.log("Extracted Score:", score);
 
-    const data = await res.json();
-    setFeedback(data.feedback || "No feedback received.");
-    
-    // Extract score from feedback
-    const scoreMatch = data.feedback.match(/Score:\s*([0-9.]+)\/10/i);
-    const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
-
-    // Save to history
-    const saveScoreMutation = `
-      mutation SubmitTestScore($input: TestScoreInput!) {
-        submitTestScore(input: $input) {
-          id
-          score
-        }
-      }
-    `;
-
-    await fetch(GRAPHQL_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: saveScoreMutation,
-        variables: {
-          input: {
-            userId: user.id,
-            testModelName: "TcfWriting",
-            testId: selectedExam.id,
-            score: score
+      await fetch(GRAPHQL_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `mutation ($input: TestScoreInput!) {
+            submitTestScore(input: $input) { id }
+          }`,
+          variables: {
+            input: {
+              userId: user.id,
+              testModelName: "TcfWriting",
+              testId: selectedExam.id,
+              score: parseFloat(score)
+            }
           }
-        }
-      })
-    });
+        })
+      });
 
-    // Reset fields
-    setResponse("");
-    setKeyboardInput("");
-    if (keyboardRef.current) {
-      keyboardRef.current.setInput("");
-    }
-    setWordCount(0);
-    
-  } catch (error) {
-    setFeedback("Error fetching feedback. Please try again.");
-    console.error("Error:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleNextExercise = () => {
-    const exercises = [
-      selectedExam.exercise1,
-      selectedExam.exercise2,
-      selectedExam.exercise3,
-    ];
-    if (exerciseIndex + 1 < exercises.length) {
-      setExerciseIndex(exerciseIndex + 1);
-      setCurrentExercise(exercises[exerciseIndex + 1]);
-      setFeedback("");
+      // Clear states after submission.
       setResponse("");
       setKeyboardInput("");
       if (keyboardRef.current) {
-        keyboardRef.current.setInput("");
+        keyboardRef.current.clearInput();
       }
-    } else {
-      alert("You have completed all exercises!");
-      setSelectedExam(null);
+    } catch (error) {
+      setFeedback("Error submitting response");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Styles for inline styling using French flag colors
-  const containerStyle = {
-    backgroundColor: frenchWhite,
-    minHeight: "100vh",
-    padding: "2rem",
+  const handleNextExercise = () => {
+    const exercises = [selectedExam.exercise1, selectedExam.exercise2, selectedExam.exercise3];
+    if (exerciseIndex >= exercises.length - 1) {
+      setSelectedExam(null);
+      return;
+    }
+    setExerciseIndex((prev) => prev + 1);
+    setCurrentExercise(exercises[exerciseIndex + 1]);
+    setFeedback("");
+    setResponse("");
+    setKeyboardInput("");
   };
 
-  const headerStyle = { color: frenchBlue, fontWeight: "bold" };
-  const buttonStyle = {
-    backgroundColor: frenchRed,
-    borderColor: frenchRed,
-    color: frenchWhite,
-  };
-  const secondaryButtonStyle = {
-    backgroundColor: frenchBlue,
-    borderColor: frenchBlue,
-    color: frenchWhite,
-  };
+  const countWords = (text) => text.trim().split(/\s+/).filter(Boolean).length;
 
-  // If no exam is selected, show the exam selection screen
-  if (!selectedExam) {
-    return (
-      <div className="container my-5">
-        <h2 className="mb-5 text-center" style={{ color: frenchRed }}>
-          Select a TCF Writing Exam
-        </h2>
-        <div className="row">
-          {allExams && allExams.length > 0 ? (
-            allExams.map((exam) => (
-              <div key={exam.id} className="col-md-4 mb-4">
+  // Pre-process feedback for rendering and score extraction
+  const plainFeedback = feedback.replace(/<br\s*\/?>/g, "\n");
+  const extractedScore = feedback.replace(/<br\s*\/?>/g, " ").match(/([\d.]+)\s*\/\s*10/)?.[1] || "0";
+
+  return (
+    <div style={{ ...customStyles, minHeight: "100vh", backgroundColor: frenchWhite }}>
+      <Helmet>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <style>{`
+          .keyboard-button { font-family: 'Inter', sans-serif !important; }
+          textarea:focus { border-color: ${frenchBlue} !important; box-shadow: 0 0 0 3px ${frenchBlue}33 !important; }
+        `}</style>
+      </Helmet>
+
+      {!selectedExam ? (
+        <div className="container py-5">
+          <h1 className="text-center mb-5 display-4 fw-bold" style={{ color: frenchRed }}>
+            TCF Writing Exams
+          </h1>
+          <div className="row g-4">
+            {allExams.map((exam) => (
+              <div key={exam.id} className="col-lg-4 col-md-6">
                 <div
-                  className="card h-100 shadow"
+                  className="card h-100 border-0 shadow-sm overflow-hidden"
                   style={{
                     cursor: "pointer",
-                    transition: "transform 0.2s",
-                    ...getLevelStyle(exam.level),
+                    transition: "transform 0.3s, box-shadow 0.3s",
+                    borderRadius: customStyles.borderRadius,
                   }}
-                  onClick={() => handleExamSelection(exam.id)}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.transform = "scale(1.03)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.transform = "scale(1)")
-                  }
+                  onClick={() => handleExamSelect(exam)}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-8px)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = "none")}
                 >
-                  <img
-                    src={getExamImage(exam.level)}
-                    className="card-img-top"
-                    alt={`${exam.level} Exam`}
-                    style={{ width: '100%',
-                      height: 'auto',
-                      maxHeight: '400px',
-                      objectFit: 'contain' }}
-                  />
-                  <div className="card-body">
-                    <h4 className="card-title">{exam.title}</h4>
-                    <p className="card-text">Level: {exam.level}</p>
+                  <div className="position-relative" style={{ height: "200px", overflow: "hidden" }}>
+                    <img
+                      src={getExamImage(exam.level)}
+                      alt={exam.title}
+                      className="img-fluid"
+                      style={{ objectFit: "cover", height: "100%", width: "100%" }}
+                    />
+                    <div className="position-absolute top-0 end-0 m-3">
+                      <span
+                        className="badge rounded-pill px-3 py-2"
+                        style={{
+                          backgroundColor: levelBadges[exam.level].color,
+                          color: frenchWhite,
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        {levelBadges[exam.level].text}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="card-body d-flex flex-column">
+                    <h3 className="card-title mb-3" style={{ color: frenchBlue }}>
+                      {exam.title}
+                    </h3>
+                    <div className="mt-auto">
+                      <hr style={{ borderColor: frenchRed }} />
+                      <div className="d-flex justify-content-between align-items-center">
+                        <small className="text-muted">3 Exercises</small>
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            backgroundColor: frenchRed,
+                            color: frenchWhite,
+                            padding: "0.25rem 1rem",
+                          }}
+                        >
+                          Start Test
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-center">No exams available</p>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
-    );
-  }
+      ) : (
+        <div className="container py-5">
+          <div className="shadow-lg rounded-3 p-4" style={{ backgroundColor: frenchWhite }}>
+            {/* Header */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <button
+                className="btn fw-medium"
+                onClick={() => setSelectedExam(null)}
+                style={{
+                  backgroundColor: frenchRed,
+                  color: frenchWhite,
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "8px",
+                }}
+              >
+                ← Back to Exams
+              </button>
+              <div className="text-end">
+                <h1 className="mb-1" style={{ color: frenchBlue }}>
+                  {selectedExam.title}
+                </h1>
+                <span
+                  className="badge rounded-pill px-3 py-2"
+                  style={{
+                    backgroundColor: levelBadges[selectedExam.level].color,
+                    color: frenchWhite,
+                  }}
+                >
+                  {levelBadges[selectedExam.level].text}
+                </span>
+              </div>
+            </div>
 
-  // Main writing exam interface
-  return (
-    <div className="container" style={containerStyle}>
-      {loading && <LoadingSpinner />}
-      <h2 className="text-center mb-4" style={headerStyle}>
-        Writing Test: {selectedExam.title}
-      </h2>
-      <div className="mb-4">
-        <button
-          className="btn mb-3"
-          style={secondaryButtonStyle}
-          onClick={() => setSelectedExam(null)}
-        >
-          Back to Exam Selection
-        </button>
-      </div>
-      <div className="mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between text-center text-md-start">
-          <h4 style={{ color: frenchBlue }}>
-            Exercise {exerciseIndex + 1}:
-          </h4>
-          <span className="fw-bold text-primary fs-5 mt-2 mt-md-0 mb-2 text-center text-md-end">
-            Word Count: <span className="fs-4">{wordCount}</span>
-          </span>
-        </div>
-        <p>{currentExercise}</p>
-        <textarea
-          className="form-control"
-          rows="5"
-          value={response}
-          onChange={handlePhysicalKeyboardInput}
-          placeholder="Write your answer here..."
-        />
-      </div>
-      <Keyboard
-        keyboardRef={(r) => (keyboardRef.current = r)}
-        layout={{
-          default: ["é è à ç ù û ë ï ô œ ê î", "{space}"],
-        }}
-        input={keyboardInput}
-        onChange={handleKeyboardChange}
-      />
-      {feedback && (
-        <div className="mt-4 p-3 border rounded" style={{ backgroundColor: "#f8f9fa" }}>
-          <h5 style={{ color: frenchBlue, borderBottom: `1px solid ${frenchBlue}` }}>
-            Feedback
-          </h5>
-          <FeedbackDisplay feedback={feedback} />
+            {/* Exercise Content */}
+            <div className="mb-4">
+              <div
+                className="mb-4 p-3 rounded"
+                style={{ backgroundColor: "#f8f9fa", border: `2px solid ${frenchBlue}` }}
+              >
+                <h4 style={{ color: frenchBlue }} className="mb-3">
+                  Exercise {exerciseIndex + 1} of 3
+                </h4>
+                <p className="lead mb-0" style={{ color: frenchBlue }}>
+                  {currentExercise}
+                </p>
+              </div>
+
+              <textarea
+                className="form-control mb-3"
+                rows="6"
+                value={response}
+                onChange={handleTextareaChange}
+                placeholder="Write your response here..."
+                style={{
+                  border: `2px solid ${frenchBlue}`,
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  lineHeight: "1.6",
+                }}
+              />
+
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <span
+                  className="badge px-3 py-2"
+                  style={{
+                    backgroundColor: frenchBlue,
+                    color: frenchWhite,
+                    borderRadius: "20px",
+                  }}
+                >
+                  {wordCount} words
+                </span>
+                <button
+                  className="btn fw-medium"
+                  onClick={handleSubmit}
+                  disabled={loading || feedback}
+                  style={{
+                    backgroundColor: frenchRed,
+                    color: frenchWhite,
+                    padding: "0.75rem 2rem",
+                    borderRadius: "8px",
+                    opacity: loading || feedback ? 0.7 : 1,
+                  }}
+                >
+                  {loading ? "Analyzing..." : "Submit Response"}
+                </button>
+              </div>
+
+              <Keyboard
+                keyboardRef={(r) => (keyboardRef.current = r)}
+                layout={{ default: ["é è à ç ù û ë ï ô œ ê î", "{space}"] }}
+                input={keyboardInput}
+                onChange={handleKeyboardChange}
+                theme="hg-theme-default hg-layout-default"
+                display={{ "{space}": "SPACE" }}
+                buttonTheme={[
+                  {
+                    class: "hg-red",
+                    buttons: "{space}",
+                    style: { backgroundColor: frenchRed, color: frenchWhite },
+                  },
+                ]}
+                style={{ borderRadius: "8px" }}
+              />
+            </div>
+
+            {/* Feedback Section */}
+            {feedback && (
+              <div className="mt-4 p-4 rounded-3" style={{ border: `2px solid ${frenchBlue}` }}>
+                <h3 className="mb-4" style={{ color: frenchBlue }}>
+                  Feedback
+                </h3>
+                <div
+                  className="score-display mb-4 p-3 text-center rounded"
+                  style={{ backgroundColor: frenchBlue, color: frenchWhite }}
+                >
+                  {extractedScore}/10
+                </div>
+
+                <div className="feedback-content" style={{ color: frenchBlue }}>
+                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                    {plainFeedback}
+                  </ReactMarkdown>
+                </div>
+
+                <div className="text-center mt-4">
+                  <button
+                    className="btn fw-medium"
+                    onClick={handleNextExercise}
+                    style={{
+                      backgroundColor: frenchBlue,
+                      color: frenchWhite,
+                      padding: "0.75rem 2.5rem",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    Next Exercise →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
-      <div className="text-center mt-5">
-        <button
-          className="btn me-2 py-2 px-3"
-          style={buttonStyle}
-          onClick={handleSubmitExercise}
-          disabled={loading || feedback}
-        >
-          {loading ? "Submitting..." : "Submit Exercise"}
-        </button>
-        {feedback && (
-          <button
-            className="btn me-2 py-2 px-3"
-            style={secondaryButtonStyle}
-            onClick={handleNextExercise}
-          >
-            Next Exercise
-          </button>
-        )}
-      </div>
+
+      {loading && <LoadingSpinner />}
     </div>
   );
 };

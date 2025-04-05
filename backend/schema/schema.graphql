@@ -11,7 +11,7 @@ type Mutation {
   acceptWritingMatch(matchId: ID!, opponentId: ID!): WritingMatch
   submitWritingMatchAnswer(input: SubmitWritingMatchAnswerInput!): WritingMatch
   finalizeWritingMatch(matchId: ID!): WritingMatch
-  updateUser(id: ID!, input: UserUpdateInput!, profileImage: Upload): User
+  updateUser(id: ID!, input: UserUpdateInput!, profileImageUrl: String): User
   createDonation(input: DonationInput!): Donation!
 
   createImageMatch(input: CreateImageMatchInput!): ImageMatch

@@ -14,6 +14,7 @@ const TCFSpeaking = require("./models/TCFSpeaking");
 //const graphqlUploadExpress = require('graphql-upload').graphqlUploadExpress;
 const PDFDocument = require("pdfkit");
 const Donation = require("./models/Donation");
+const ImgurClient = require("imgur").default;
 const { ApiError, CheckoutPaymentIntent, Client: PPClient, Environment, LogLevel, OrdersController } = require("@paypal/paypal-server-sdk");
 
 const together = new Together();
@@ -21,16 +22,54 @@ const together = new Together();
 // Initialize Express app
 const app = express();
 
-// Add the graphql-upload middleware
-//app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+// Configure Multer for file uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middleware to parse JSON bodies
 app.use(express.json());
 app.use(cors({}));
 
-// Configure Multer for file uploads
-const upload = multer({ storage: multer.memoryStorage() });
+// Create an instance of the Imgur client.
+const imgurClient = new ImgurClient({
+  clientId: process.env.IMGUR_CLIENT_ID
+});
+
+// Add the graphql-upload middleware
+//app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+app.post("/api/upload-image", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    
+    // Upload to Imgur
+    const imageUrl = await uploadFileToImgur(req.file);
+    console.log("Image uploaded to Imgur:", imageUrl);
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error("Image upload error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to handle Imgur uploads
+const uploadFileToImgur = async (file) => {
+  try {
+    const base64Image = file.buffer.toString("base64");
+    const response = await imgurClient.upload({
+      image: base64Image,
+      type: 'base64',
+    });
+    return response.data.link;
+  } catch (error) {
+    console.error("Imgur upload error:", error);
+    throw new Error("Image upload failed");
+  }
+};
+
+
+
 
 // Configure Gradio Client
 let Client;

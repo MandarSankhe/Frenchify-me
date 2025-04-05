@@ -665,27 +665,26 @@ const resolvers = {
     },
     
     
-    updateUser: async (_, { id, input, profileImage }) => {
-      try {
-        const user = await User.findById(id);
-        if (!user) throw new Error("User not found");
-    
-        // Update language level
-        if (input.languageLevel) user.languageLevel = input.languageLevel;
-    
-        // Handle file upload
-        if (profileImage) {
-          console.log("Raw profileImage input:", profileImage);
-          user.profileImage = await uploadFileToImgur(profileImage);
+
+      updateUser: async (_, { id, input, profileImageUrl }) => {
+        try {
+          const user = await User.findById(id);
+          if (!user) throw new Error("User not found");
+
+          if (profileImageUrl) {
+            user.profileImage = profileImageUrl;
+          }
+
+          if (input.languageLevel) {
+            user.languageLevel = input.languageLevel;
+          }
+          await user.save();
+          return user;
+        } catch (error) {
+          console.error("Update error:", error);
+          throw new Error(`Profile update failed: ${error.message}`);
         }
-    
-        await user.save();
-        return user;
-      } catch (error) {
-        console.error("Update error:", error);
-        throw new Error(`Profile update failed: ${error.message}`);
-      }
-    },
+      },
 
     // Save donation details + generate invoice number
     createDonation: async (_, { input }) => {

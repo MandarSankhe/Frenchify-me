@@ -1,15 +1,18 @@
+// UserSettings.js
 import React, { useState, useEffect } from "react";
 import { useMutation, gql } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable"; // for tables
 import Navbar from "./Navbar";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
+import { downloadTranscript } from "../context/transcriptUtils"; // Import the shared function
+
+const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
 const UPDATE_USER_MUTATION = gql`
-  mutation UpdateUser($id: ID!, $input: UserUpdateInput!, $profileImage: Upload) {
-    updateUser(id: $id, input: $input, profileImage: $profileImage) {
+  mutation UpdateUser($id: ID!, $input: UserUpdateInput!, $profileImageUrl: String) {
+    updateUser(id: $id, input: $input, profileImageUrl: $profileImageUrl) {
       id
       languageLevel
       profileImage
@@ -18,36 +21,6 @@ const UPDATE_USER_MUTATION = gql`
     }
   }
 `;
-
-const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
-
-// Helper: fetch image and convert to Base64
-const fetchImageAsBase64 = async (url) => {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.error("Error fetching image:", error);
-    return null;
-  }
-};
-
-// Helper: get image natural dimensions from base64 data
-const getImageDimensions = (base64) => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () =>
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = reject;
-    img.src = base64;
-  });
-};
 
 const UserSettings = () => {
   const { user, updateUserdata } = useAuth();
@@ -68,7 +41,7 @@ const UserSettings = () => {
 
   const [updateUser] = useMutation(UPDATE_USER_MUTATION);
 
-  // Colors for design
+  // Brand Colors
   const frenchBlue = "#0055A4";
   const frenchRed = "#EF4135";
   const frenchWhite = "#FFFFFF";
@@ -98,238 +71,16 @@ const UserSettings = () => {
     }
   };
 
-  // Generate PDF and return a blob URL instead of downloading automatically
-  const generateTranscriptPdf = async (transcriptData, images) => {
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const pageWidth = doc.getPageWidth();
-    const pageHeight = doc.getPageHeight();
-
-    // ---------- Header Section ----------
-    doc.setFillColor(42, 92, 130);
-    doc.rect(0, 0, pageWidth, 30, "F");
-
-    if (images.logoHeader) {
-      // Preserve aspect ratio for logo header
-      const logoDims = await getImageDimensions(images.logoHeader);
-      const desiredLogoWidth = 33;
-      const desiredLogoHeight = (desiredLogoWidth * logoDims.height) / logoDims.width;
-      doc.addImage(images.logoHeader, "PNG", 5, 5, desiredLogoWidth, desiredLogoHeight);
-    }
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.text(`${user.username}'s Transcript`, pageWidth - 10, 12, { align: "right" });
-    doc.setFontSize(10);
-    doc.text("Official Learning Record", pageWidth - 10, 18, { align: "right" });
-    doc.setDrawColor(91, 164, 230);
-    doc.setLineWidth(0.5);
-    doc.line(10, 32, pageWidth - 10, 32);
-
-    // ---------- Skill Mastery Section ----------
-    let yPos = 38;
-    doc.setTextColor(42, 92, 130);
-    doc.setFontSize(14);
-    doc.text("Skill Mastery", 10, yPos);
-    yPos += 6;
-    doc.setFontSize(10);
-    Object.entries(transcriptData.skillProgress).forEach(([skill, score]) => {
-      const percent = score * 10;
-      doc.setTextColor(68, 68, 68);
-      doc.text(skill, 10, yPos);
-      doc.setFillColor(232, 232, 232);
-      doc.rect(70, yPos - 3, 40, 4, "F");
-      doc.setFillColor(91, 164, 230);
-      doc.rect(70, yPos - 3, (40 * percent) / 100, 4, "F");
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${percent}%`, 115, yPos);
-      yPos += 6;
-    });
-
-    // ---------- H2H Performance Section ----------
-    yPos += 4;
-    const colWidth = (pageWidth - 20) / 2;
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text("Head-to-Head Performance", 10, yPos);
-    yPos += 4;
-
-    const drawH2HBox = (title, stats, startY) => {
-      const boxWidth = colWidth - 5;
-      doc.setFillColor(232, 232, 232);
-      doc.rect(10, startY, boxWidth, 16, "F");
-      doc.setFontSize(9);
-      doc.setTextColor(42, 92, 130);
-      doc.text(title, 12, startY + 4);
-      doc.setFontSize(12);
-      doc.setTextColor(91, 164, 230);
-      doc.text(`${stats.wins}-${stats.losses}-${stats.draws}`, 12, startY + 10);
-      doc.setFontSize(7);
-      doc.setTextColor(102, 102, 102);
-      doc.text("Wins • Losses • Draws", 12, startY + 14);
-      return startY + 18;
-    };
-
-    let leftY = yPos;
-    leftY = drawH2HBox("Writing Matches", transcriptData.writingH2H, leftY);
-    leftY = drawH2HBox("Image Matches", transcriptData.imageH2H, leftY);
-
-    const rightX = 10 + colWidth + 5;
-    const rightY = yPos;
-    const radius = 8;
-    doc.setFillColor(232, 232, 232);
-    doc.circle(rightX + colWidth / 2, rightY + 10, radius, "F");
-    doc.setFontSize(12);
-    doc.setTextColor(42, 92, 130);
-    doc.text(`${transcriptData.overallPercentage}%`, rightX + colWidth / 2, rightY + 12, { align: "center" });
-    doc.setFontSize(7);
-    doc.setTextColor(102, 102, 102);
-    doc.text("Overall Score", rightX + colWidth / 2, rightY + 16, { align: "center" });
-
-    // ---------- Detailed Exam Records Section ----------
-    const tableY = Math.max(leftY, rightY + 20) + 6;
-    doc.setTextColor(42, 92, 130);
-    doc.setFontSize(14);
-    doc.text("Detailed Exam Records", 10, tableY);
-    const finalTableY = tableY + 4;
-
-    const tableBody = transcriptData.testHistories.map((history) => {
-      const exam = history.testModelName.replace("Tcf", "");
-      const dateObj = new Date(parseInt(history.createdAt, 10));
-      const date = isNaN(dateObj.getTime()) ? "N/A" : dateObj.toLocaleDateString();
-      const marks = `${history.score}/10`;
-      const percent = `${(history.score * 10).toFixed(1)}%`;
-      return [exam, date, marks, percent];
-    });
-
-    autoTable(doc, {
-      startY: finalTableY,
-      head: [["Exam", "Date", "Marks", "% Score"]],
-      body: tableBody,
-      theme: "grid",
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [42, 92, 130], textColor: [255, 255, 255] },
-      margin: { left: 10, right: 10 },
-      didDrawPage: (data) => {
-        doc.setFontSize(7);
-        doc.setTextColor(102, 102, 102);
-        doc.text("© 2025 VRMX Solutions", 10, pageHeight - 10);
-        doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - 20, pageHeight - 10, { align: "right" });
-      },
-    });
-
-    // ---------- Watermarks ----------
-    if (images.logoWatermark) {
-      const wmDims = await getImageDimensions(images.logoWatermark);
-      const desiredWmWidth = 80;
-      const desiredWmHeight = (desiredWmWidth * wmDims.height) / wmDims.width;
-      doc.setGState(new doc.GState({ opacity: 0.08 }));
-      doc.addImage(images.logoWatermark, "PNG", pageWidth / 2 - desiredWmWidth / 2, pageHeight / 2 - desiredWmHeight / 2, desiredWmWidth, desiredWmHeight);
-      doc.setGState(new doc.GState({ opacity: 1 }));
-    }
-    if (images.stamp) {
-      const stampDims = await getImageDimensions(images.stamp);
-      const desiredStampWidth = 40; // desired width for stamp
-      const desiredStampHeight = (desiredStampWidth * stampDims.height) / stampDims.width;
-      // Define desired position; adjust as needed:
-      const stampX = pageWidth - 70; // move horizontally
-      const stampY = pageHeight / 3 - 70; // move vertically
-      doc.setGState(new doc.GState({ opacity: 0.5 }));
-      // Pass rotation as last parameter, here -15 degrees
-      doc.addImage(images.stamp, "PNG", stampX, stampY, desiredStampWidth, desiredStampHeight, undefined, "FAST", -15);
-      doc.setGState(new doc.GState({ opacity: 1 }));
-    }
-
-    return doc.output("bloburl");
-  };
-
-  // Download transcript: fetch transcript data and images, then generate PDF and show modal
-  const downloadTranscript = async () => {
+  // New function: use the shared transcriptUtils function to generate the transcript
+  const handleDownloadTranscript = async () => {
     if (!user?.id) return;
     setLoading(true);
-
-    const query = `
-      query GetDashboardData($userId: ID!) {
-        testHistories(userId: $userId) {
-          id
-          testModelName
-          score
-          createdAt
-        }
-        writingH2H: userWritingMatches(userId: $userId) {
-          id
-          initiator { id }
-          opponent { id }
-          totalScore { initiator opponent }
-          status
-          createdAt
-        }
-        imagePuzzleH2H: userImageMatches(userId: $userId) {
-          id
-          initiator { id }
-          opponent { id }
-          totalScore { initiator opponent }
-          status
-          createdAt
-        }
-      }
-    `;
-
     try {
-      const response = await fetch(GRAPHQL_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, variables: { userId: user.id } }),
-      });
-      const result = await response.json();
-      if (result.errors) {
-        console.error("GraphQL errors:", result.errors);
-        setLoading(false);
-        return;
-      }
-
-      const { testHistories, writingH2H, imagePuzzleH2H } = result.data;
-      const skillProgress = testHistories.reduce((acc, history) => {
-        const skill = history.testModelName.replace("Tcf", "");
-        acc[skill] = history.score;
-        return acc;
-      }, {});
-      const totalMarks = testHistories.reduce((sum, h) => sum + h.score, 0);
-      const overallPercentage = testHistories.length > 0
-        ? ((totalMarks / (testHistories.length * 10)) * 100).toFixed(1)
-        : 0;
-
-      const calculateH2H = (matches) =>
-        matches.reduce((acc, match) => {
-          const isInitiator = match.initiator.id === user.id;
-          const score = isInitiator ? match.totalScore.initiator : match.totalScore.opponent;
-          const opponentScore = isInitiator ? match.totalScore.opponent : match.totalScore.initiator;
-          if (score > opponentScore) acc.wins++;
-          else if (score < opponentScore) acc.losses++;
-          else acc.draws++;
-          return acc;
-        }, { wins: 0, losses: 0, draws: 0 });
-      const writingMatchesCalc = calculateH2H(writingH2H);
-      const imageMatchesCalc = calculateH2H(imagePuzzleH2H);
-
-      const transcriptData = {
-        testHistories,
-        writingH2H: writingMatchesCalc,
-        imageH2H: imageMatchesCalc,
-        skillProgress,
-        overallPercentage,
-      };
-
-      const [stamp, logoWatermark, logoHeader] = await Promise.all([
-        fetchImageAsBase64("https://i.imgur.com/4MSkH9o.png"),
-        fetchImageAsBase64("https://frenchify-me-6yik.vercel.app/Logo.png"),
-        fetchImageAsBase64("https://frenchify-me-6yik.vercel.app/Logo.png"),
-      ]);
-      const images = { stamp, logoWatermark, logoHeader };
-
-      const pdfUrl = await generateTranscriptPdf(transcriptData, images);
+      const pdfUrl = await downloadTranscript(user, GRAPHQL_ENDPOINT);
       setTranscriptUrl(pdfUrl);
       setShowModal(true);
     } catch (error) {
-      console.error("Error downloading transcript:", error);
+      console.error("Error generating transcript:", error);
     } finally {
       setLoading(false);
     }
@@ -339,123 +90,270 @@ const UserSettings = () => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
-    if (!user) {
-      setErrorMessage("User not logged in.");
-      return;
-    }
+    setLoading(true);
+    
     try {
+      let imageUrl = user.profileImage;
+      
+      // Upload new image if selected
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('image', selectedFile);
+        
+        const uploadResponse = await fetch(`${API_ENDPOINT}/api/upload-image`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        console.log("Upload response:", uploadResponse);
+        if (!uploadResponse.ok) throw new Error('Image upload failed');
+        const { imageUrl: newUrl } = await uploadResponse.json();
+        imageUrl = newUrl;
+      }
+  
+      // Update user with new image URL and language level
       const { data } = await updateUser({
         variables: {
           id: user.id,
-          input: { languageLevel: formData.languageLevel },
-          profileImage: selectedFile,
+          input: { 
+            languageLevel: formData.languageLevel,
+          },
+          profileImageUrl: imageUrl
         },
       });
+  
       if (data?.updateUser) {
         updateUserdata(data.updateUser);
         setSuccessMessage("Profile updated successfully!");
-        navigate("/dashboard");
       }
     } catch (error) {
-      setErrorMessage("Error updating profile. Please try again.");
+      setErrorMessage(error.message);
       console.error("Update error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
       <Navbar />
-      <div className="container d-flex justify-content-center align-items-center vh-100">
-        <div className="card shadow p-4 w-100" style={{ maxWidth: "400px" }}>
-          <h1 className="text-center mb-3">Update Profile</h1>
-          {successMessage && <p className="text-success text-center">{successMessage}</p>}
-          {errorMessage && <p className="text-danger text-center">{errorMessage}</p>}
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3 text-center">
-              <label className="form-label">Profile Picture</label>
-              <div>
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Profile Preview"
-                    className="rounded-circle border"
-                    style={{ width: "100px", height: "100px", objectFit: "cover" }}
-                  />
-                ) : (
-                  <p>No image selected</p>
-                )}
+      <div className="container-fluid min-vh-100" style={{ 
+        background: frenchWhite,
+        padding: '2rem 0'
+      }}>
+        <div className="row justify-content-center">
+          <div className="col-xxl-8 col-xl-10 col-lg-12">
+            <div className="card shadow-lg border-0" style={{
+              borderRadius: '1.5rem',
+              overflow: 'hidden'
+            }}>
+              <div className="card-header p-4" style={{
+                background: frenchBlue,
+                position: 'relative'
+              }}>
+                <h1 className="text-white mb-0 display-5 fw-bold">Profile Settings</h1>
+                <div className="position-absolute top-0 end-0 m-3">
+                  <Link to="/dashboard" className="btn btn-light btn-sm rounded-pill px-3">
+                    <i className="bi bi-arrow-left me-2"></i>Back to Dashboard
+                  </Link>
+                </div>
               </div>
-              <input type="file" className="form-control mt-2" accept="image/*" onChange={handleFileChange} />
+
+              <div className="card-body p-4 p-xl-5">
+                <div className="row g-4">
+                  {/* Profile Picture Section */}
+                  <div className="col-12 col-md-4 text-center">
+                    <div className="avatar-upload">
+                      <div className="avatar-preview mx-auto" style={{
+                        backgroundImage: `url(${previewUrl || '/default-avatar.jpg'})`,
+                        borderRadius: '50%',
+                        width: '200px',
+                        height: '200px',
+                        margin: '0 auto',
+                        boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }} />
+                      <button 
+                        className="btn btn-outline-secondary mt-3" 
+                        onClick={() => document.getElementById("fileInput").click()}
+                      >
+                        <i className="bi bi-camera-fill me-2"></i>Change Profile Picture
+                      </button>
+                      <input 
+                        type="file" 
+                        id="fileInput"
+                        className="d-none" 
+                        accept="image/*" 
+                        onChange={handleFileChange} 
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <button 
+                        onClick={handleDownloadTranscript}
+                        className="btn btn-outline-primary w-100 py-3 rounded-pill d-flex align-items-center justify-content-center"
+                      >
+                        <i className="bi bi-file-earmark-pdf me-2"></i>
+                        Generate Transcript
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Profile Form Section */}
+                  <div className="col-12 col-md-8">
+                    <form onSubmit={handleSubmit}>
+                      <div className="row g-4">
+                        {/* Username Field */}
+                        <div className="col-12">
+                          <div className="form-floating">
+                            <input
+                              type="text"
+                              className="form-control form-control-lg"
+                              id="username"
+                              value={formData.username}
+                              disabled
+                              style={{ borderColor: frenchBlue }}
+                            />
+                            <label htmlFor="username" className="text-muted">
+                              <i className="bi bi-person-fill me-2"></i>Username
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Email Field */}
+                        <div className="col-12">
+                          <div className="form-floating">
+                            <input
+                              type="email"
+                              className="form-control form-control-lg"
+                              id="email"
+                              value={formData.email}
+                              disabled
+                              style={{ borderColor: frenchBlue }}
+                            />
+                            <label htmlFor="email" className="text-muted">
+                              <i className="bi bi-envelope-fill me-2"></i>Email Address
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Language Level Select */}
+                        <div className="col-12">
+                          <div className="form-floating">
+                            <select
+                              name="languageLevel"
+                              className="form-select form-select-lg"
+                              value={formData.languageLevel}
+                              onChange={handleInputChange}
+                              style={{ borderColor: frenchBlue }}
+                            >
+                              <option value="Beginner">Beginner</option>
+                              <option value="Intermediate">Intermediate</option>
+                              <option value="Advanced">Advanced</option>
+                            </select>
+                            <label htmlFor="languageLevel" className="text-muted">
+                              <i className="bi bi-translate me-2"></i>Proficiency Level
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="col-12 mt-4">
+                          <button 
+                            type="submit" 
+                            className="btn btn-lg w-100 rounded-pill text-white"
+                            style={{
+                              background: frenchBlue,
+                              transition: 'transform 0.2s'
+                            }}
+                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseOut={e => e.currentTarget.style.transform = 'none'}
+                          >
+                            <i className="bi bi-save-fill me-2"></i>
+                            Update Profile
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="mb-3">
-              <label className="form-label">Username</label>
-              <input type="text" className="form-control" value={formData.username} disabled />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Email</label>
-              <input type="email" className="form-control" value={formData.email} disabled />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Language Level</label>
-              <select name="languageLevel" className="form-select" value={formData.languageLevel} onChange={handleInputChange}>
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-              </select>
-            </div>
-            <div className="d-grid">
-              <button type="submit" className="btn text-white" style={{ backgroundColor: frenchBlue }}>
-                Update Profile
-              </button>
-            </div>
-            <div className="container mt-4">
-              <button className="btn" type="button" onClick={downloadTranscript} style={{ backgroundColor: frenchBlue, color: frenchWhite }}>
-                Generate Transcript
-              </button>
-            </div>
-          </form>
-          <p className="d-grid text-center mt-3">
-            <Link to="/dashboard" className="btn text-white text-decoration-none" style={{ backgroundColor: frenchRed }}>
-              Go back to Dashboard
-            </Link>
-          </p>
+          </div>
         </div>
-      </div>
+
+        {/* Status Messages */}
+        {successMessage && (
+          <div className="toast show position-fixed top-0 end-0 m-4" role="alert">
+            <div className="toast-header bg-success text-white">
+              <i className="bi bi-check-circle-fill me-2"></i>
+              <strong className="me-auto">Success!</strong>
+              <button type="button" className="btn-close" onClick={() => setSuccessMessage('')}></button>
+            </div>
+            <div className="toast-body">{successMessage}</div>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="toast show position-fixed top-0 end-0 m-4" role="alert">
+            <div className="toast-header bg-danger text-white">
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              <strong className="me-auto">Error!</strong>
+              <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
+            </div>
+            <div className="toast-body">{errorMessage}</div>
+          </div>
+        )}
+
+        {/* Transcript Modal */}
+        {showModal && (
+          <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content overflow-hidden" style={{ borderRadius: '1rem' }}>
+                <div className="modal-header" style={{ background: frenchBlue, color: frenchWhite }}>
+                  <h5 className="modal-title">
+                    <i className="bi bi-file-earmark-pdf-fill me-2"></i>
+                    Transcript Ready!
+                  </h5>
+                  <button 
+                    type="button" 
+                    className="btn-close btn-close-white" 
+                    onClick={() => setShowModal(false)}
+                  ></button>
+                </div>
+                <div className="modal-body text-center py-4">
+                  <i className="bi bi-file-earmark-check-fill display-4" style={{ color: frenchBlue, marginBottom: '1rem' }}></i>
+                  <p className="lead mb-4">Your learning transcript is ready to view or download.</p>
+                  <div className="d-flex justify-content-center gap-3">
+                    <button 
+                      className="btn btn-outline-secondary px-4 rounded-pill"
+                      onClick={() => setShowModal(false)}
+                    >
+                      Close
+                    </button>
+                    <button 
+                      className="btn btn-primary px-4 rounded-pill"
+                      onClick={() => {
+                        window.open(transcriptUrl, "_blank");
+                        setShowModal(false);
+                      }}
+                    >
+                      <i className="bi bi-download me-2"></i>Open PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       {loading && (
         <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1050 }}>
           <LoadingSpinner />
         </div>
       )}
-      {showModal && (
-        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content" style={{ borderRadius: "1rem" }}>
-              <div className="modal-header" style={{ backgroundColor: frenchBlue }}>
-                <h5 className="modal-title" style={{ color: frenchWhite }}>Transcript Ready 🎓</h5>
-                <button type="button" className="btn-close" style={{ filter: "invert(1)" }} onClick={() => setShowModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p>Your transcript has been generated successfully.</p>
-              </div>
-              <div className="modal-footer">
-                <button className="btn" style={{ backgroundColor: frenchRed, color: frenchWhite }} onClick={() => setShowModal(false)}>
-                  Close
-                </button>
-                <button
-                  className="btn"
-                  style={{ backgroundColor: frenchBlue, color: frenchWhite }}
-                  onClick={() => {
-                    window.open(transcriptUrl, "_blank");
-                    setShowModal(false);
-                  }}
-                >
-                  View Transcript
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </>
   );
 };

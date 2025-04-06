@@ -55,6 +55,15 @@ const SpeakingMock = () => {
 
   const overallQuestionIndex = (currentMainQuestionRef.current - 1) * 3 + followupCountRef.current + 1;
 
+  // Ref for chat container to scroll to bottom
+  const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; // Scroll to bottom
+    }
+  }, [conversationHistory]);
+
   // Fetch speaking exams from GraphQL
   useEffect(() => {
     const fetchAllTCFSpeakings = async () => {
@@ -554,109 +563,170 @@ const SpeakingMock = () => {
     <div className="container my-5">
       {isLoading && <LoadingSpinner />}
   
-      <div className="mb-4">
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
         <button
           className="btn"
           style={{
             backgroundColor: frenchBlue,
             color: frenchWhite,
-            marginRight: "1rem",
+            padding: "0.5rem 1rem",
+            borderRadius: "0.25rem"
           }}
           onClick={() => setSelectedExam(null)}
         >
           Back to Exam Selection
         </button>
+        <h2 className="mb-0" style={{ color: frenchBlue }}>
+          Speaking Exam: {selectedExam.topic}
+        </h2>
       </div>
-      <h2 className="text-center mb-4" style={{ color: frenchBlue }}>
-        Speaking Exam: {selectedExam.topic}
-      </h2>
   
-      <TalkingHead audioRef={audioRef} />
-      <div className="chat-container mb-4" style={{ maxHeight: "300px", overflowY: "auto" }}>
-        {conversationHistory.length > 0 &&
-          conversationHistory
-            .slice()
-            .reverse()
-            .map((msg) => (
+      {/* Main Content */}
+      <div className="row g-4">
+        {/* Left Column - Talking Head and Audio Wave */}
+        <div className="col-md-5">
+          <div className="sticky-top" style={{ top: "1rem" }}>
+            <TalkingHead audioRef={audioRef} />
+            <div className="mt-4">
               <div
-                key={msg.id}
-                className="card mb-3"
                 style={{
-                  backgroundColor: msg.role === "user" ? "#e6f7ff" : "#f1f1f1",
-                  border: msg.role === "user" ? `2px solid ${frenchBlue}` : "1px solid #ccc",
-                  padding: "1rem",
                 }}
               >
-                <h5 style={{ color: msg.role === "user" ? frenchBlue : frenchRed }}>
-                  {msg.role === "user" ? "🗣 You said:" : "🤖 AI Response:"}
-                </h5>
-                <p>{msg.text}</p>
+                <ReactMic
+                  record={recording}
+                  className="sound-wave"
+                  onStop={onStop}
+                  strokeColor={frenchBlue}
+                  backgroundColor="#FFFFFF"
+                  mimeType="audio/wav"
+                  visualSetting="sinewave"
+                  width={300}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        {/* Right Column - Chat */}
+        <div className="col-md-7">
+          <div
+            ref={chatContainerRef}
+            className="chat-container"
+            style={{
+              height: "60vh",
+              overflowY: "auto",
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "0.5rem",
+              scrollBehavior: "smooth"
+            }}
+          >
+            {conversationHistory.map((msg) => (
+              <div
+                key={msg.id}
+                className="d-flex mb-3"
+                style={{
+                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start"
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: msg.role === "user" ? "#DCF8C6" : "#FFFFFF",
+                    border: "1px solid #ccc",
+                    borderRadius: "15px",
+                    padding: "0.75rem 1rem",
+                    maxWidth: "85%",
+                    boxShadow: "0px 1px 3px rgba(0,0,0,0.1)"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.85rem",
+                      marginBottom: "0.25rem",
+                      color: "#555"
+                    }}
+                  >
+                    {msg.role === "user" ? "🗣 You said:" : "🤖 AI Response:"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1rem",
+                      color: "#000",
+                      whiteSpace: "pre-wrap"
+                    }}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
               </div>
             ))}
-      </div>
+          </div>
   
-      <div className="text-center my-4">
-        <button
-          className="btn me-2"
-          style={{
-            backgroundColor: frenchBlue,
-            color: frenchWhite,
-            padding: "0.75rem 1.5rem",
-            fontSize: "1.1rem",
-            borderRadius: "0.3rem",
-          }}
-          onClick={startRecording}
-          disabled={recording}
-        >
-          Start Recording
-        </button>
-        <button
-          className="btn me-2"
-          style={{
-            backgroundColor: frenchRed,
-            color: frenchWhite,
-            padding: "0.75rem 1.5rem",
-            fontSize: "1.1rem",
-            borderRadius: "0.3rem",
-          }}
-          onClick={stopRecording}
-          disabled={!recording}
-        >
-          Stop Recording
-        </button>
-        {/* Replay and Pause buttons */}
-        <button
-          className="btn me-2"
-          title="Replay audio"
-          onClick={handleReplayAudio}
-          style={{ backgroundColor: "transparent", border: "none" }}
-        >
-          <FaRedo size={24} color={frenchBlue} />
-        </button>
-        <button
-          className="btn me-2"
-          onClick={toggleAudioPlayback}
-          style={{ backgroundColor: "transparent", border: "none" }}
-        >
-          {isAudioPlaying ? (
-            <FaPause size={24} color={frenchRed} />
-          ) : (
-            <FaPlay size={24} color={frenchBlue} />
-          )}
-        </button>
-        <div className="mt-3">
-          <ReactMic
-            record={recording}
-            className="sound-wave"
-            onStop={onStop}
-            strokeColor={frenchBlue}
-            backgroundColor="#fff"
-            mimeType="audio/wav"
-          />
+          {/* Recording Controls */}
+          <div className="text-center mt-4">
+            {!recording ? (
+              <button
+                className="btn"
+                onClick={startRecording}
+                style={{
+                  backgroundColor: frenchBlue,
+                  color: frenchWhite,
+                  padding: "0.75rem 2rem",
+                  fontSize: "1.1rem",
+                  borderRadius: "50px",
+                  border: "none",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)"
+                }}
+              >
+                <span role="img" aria-label="microphone" className="me-2">🎤</span>
+                Start Recording
+              </button>
+            ) : (
+              <button
+                className="btn"
+                onClick={stopRecording}
+                style={{
+                  backgroundColor: frenchRed,
+                  color: frenchWhite,
+                  padding: "0.75rem 2rem",
+                  fontSize: "1.1rem",
+                  borderRadius: "50px",
+                  border: "none",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)"
+                }}
+              >
+                <span role="img" aria-label="stop" className="me-2">⏹</span>
+                Stop Recording
+              </button>
+            )}
+  
+            <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+              <button
+                className="btn"
+                title="Replay audio"
+                onClick={handleReplayAudio}
+                style={{ backgroundColor: "transparent", border: "none" }}
+              >
+                <FaRedo size={24} color={frenchBlue} />
+              </button>
+              <button
+                className="btn"
+                onClick={toggleAudioPlayback}
+                style={{ backgroundColor: "transparent", border: "none" }}
+              >
+                {isAudioPlaying ? (
+                  <FaPause size={24} color={frenchRed} />
+                ) : (
+                  <FaPlay size={24} color={frenchBlue} />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
   
-      {/* Finish Test Button: when on Q3 DB and 2 follow-ups done (i.e., Q9 reached) */}
+      {/* Finish Test Button */}
       {currentMainQuestion === 3 && followupCount === 2 && finalScore === null && (
         <div className="text-center my-4">
           <button
@@ -666,7 +736,7 @@ const SpeakingMock = () => {
               color: frenchWhite,
               padding: "0.5rem 1rem",
               fontSize: "1rem",
-              borderRadius: "0.3rem",
+              borderRadius: "0.3rem"
             }}
             onClick={handleFinishTest}
           >
@@ -675,6 +745,7 @@ const SpeakingMock = () => {
         </div>
       )}
   
+      {/* Final Results */}
       {finalScore !== null && (
         <div className="container my-5">
           <h2 className="text-center mb-4" style={{ color: frenchBlue }}>
@@ -690,7 +761,12 @@ const SpeakingMock = () => {
           <div className="text-center mt-4">
             <button
               className="btn"
-              style={{ backgroundColor: frenchBlue, color: frenchWhite }}
+              style={{
+                backgroundColor: frenchBlue,
+                color: frenchWhite,
+                padding: "0.5rem 1rem",
+                borderRadius: "0.25rem"
+              }}
               onClick={() => window.location.reload()}
             >
               Restart Test
@@ -702,6 +778,7 @@ const SpeakingMock = () => {
       <audio ref={audioRef} style={{ display: "none" }} />
     </div>
   );
+
 };
 
 export default SpeakingMock;

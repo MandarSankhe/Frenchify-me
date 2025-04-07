@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import LoadingSpinner from "../LoadingSpinner";
 import { useAuth } from "../../context/AuthContext";
+import Chat from "./Chat";
 
 // GraphQL Queries & Mutations
 const GET_USERS = gql`
@@ -854,6 +855,7 @@ const HeadToHeadImagePuzzleMatch = () => {
   
             </div>
           </div>
+          <Chat matchId={activeMatch.id} currentUser={user} />
         </div>
       );
     } else if (activeMatch.status === "completed") {

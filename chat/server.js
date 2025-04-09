@@ -26,6 +26,24 @@ app.get('/', (req, res) => {
   res.send('Socket.IO server is running.');
 });
 
+// Add a cron job endpoint
+app.get('/cron-job', (req, res) => {
+  // Optionally, secure this endpoint (for example, by requiring a secret token as a query parameter)
+  const token = req.query.token;
+  if (token !== process.env.CRON_SECRET) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  console.log('Cron job triggered');
+  // Server: Sending a system broadcast via a separate event
+io.emit('system message', {
+  user: 'System',
+  text: 'This is a scheduled update.',
+  time: new Date(),
+});
+
+});
+
 // Socket.IO connection logic
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -42,6 +60,13 @@ io.on('connection', (socket) => {
     // data should include the room and message info
     io.to(data.room).emit('chat message', data.message);
   });
+
+  
+// Client: Handling the system message differently
+socket.on('system message', (message) => {
+  // Maybe render this in a different style or place in the UI
+  console.log('System message:', message);
+});
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);

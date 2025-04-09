@@ -28,11 +28,6 @@ app.get('/', (req, res) => {
 
 // Add a cron job endpoint
 app.get('/cron-job', (req, res) => {
-  // Optionally, secure this endpoint (for example, by requiring a secret token as a query parameter)
-  const token = req.query.token;
-  if (token !== process.env.CRON_SECRET) {
-    return res.status(401).send('Unauthorized');
-  }
 
   console.log('Cron job triggered');
   // Server: Sending a system broadcast via a separate event

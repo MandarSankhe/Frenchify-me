@@ -5,8 +5,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FaCommentDots, FaTimes, FaPaperPlane } from "react-icons/fa";
 
 // Use your API endpoint from the environment or default to localhost
-const API_ENDPOINT = process.env.CHAT_API_URL || "http://localhost:8736";
+const API_ENDPOINT = "https://frenchify-me.onrender.com";
+//const API_ENDPOINT =  "http://localhost:8736";
 // Initialize socket instance (consider using a singleton for production)
+console.log("Connecting to socket at:", API_ENDPOINT);
 const socket = io(API_ENDPOINT);
 
 const Chat = ({ matchId, currentUser }) => {

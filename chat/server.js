@@ -1,8 +1,12 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require("cors");
 
 const app = express();
+app.use(cors({
+
+}));
 
 // Create an HTTP server
 const server = http.createServer(app);
@@ -10,7 +14,10 @@ const server = http.createServer(app);
 // Initialize Socket.IO server
 const io = new Server(server, {
   cors: {
-
+    origin: "*", // Allow all origins for simplicity; adjust as needed
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: "*", // Allow all headers for simplicity; adjust as needed
   }
 });
 

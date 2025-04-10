@@ -16,6 +16,7 @@ const Donation = require("../models/Donation");
 const ImageExam = require("../models/ImageExam");
 const ImageMatch = require("../models/ImageMatch");
 const { ImgurClient } = require('imgur');
+const Booking = require("../models/Booking");
 
 require("dotenv").config();
 const together = new Together();
@@ -299,6 +300,41 @@ const resolvers = {
         throw new Error("Failed to fetch pending tutors");
       }
     },
+    trainers: async () => {
+      try {
+        // Find all users whose userType is "trainer"
+        return await User.find({ userType: "trainer" });
+      } catch (error) {
+        console.error("Error fetching trainers:", error);
+        throw new Error("Failed to fetch trainers");
+      }
+    },
+     // Query to get pending bookings for a trainer
+     bookingsByTrainer: async (_, { trainerId }) => {
+      try {
+        return await Booking.find({ trainer: trainerId }).populate("trainee").populate("trainer");
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        throw new Error("Failed to fetch bookings");
+      }
+    },
+    activeBookingByTrainee: async (_, { traineeId }) => {
+      try {
+        const now = new Date().toISOString();
+        // Find one booking for the trainee where scheduledTime is still in the future
+        // and status is either pending or confirmed.
+        const booking = await Booking.findOne({
+          trainee: traineeId,
+          scheduledTime: { $gte: now },
+          status: { $in: ["pending", "confirmed"] }
+        }).populate("trainee").populate("trainer");
+        return booking;
+      } catch (error) {
+        console.error("Error fetching active booking:", error);
+        throw new Error("Failed to fetch active booking");
+      }
+    },
+    
   },
 
   Mutation: {
@@ -728,6 +764,57 @@ const resolvers = {
       }
     },
 
+    scheduleBooking: async (_, { input }) => {
+      const { traineeId, trainerId, scheduledTime } = input;
+      try {
+        const newBooking = new Booking({
+          trainee: traineeId,
+          trainer: trainerId,
+          scheduledTime,
+          traineeRSVP: false,
+          trainerRSVP: false,
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        });
+        await newBooking.save();
+        return await newBooking.populate("trainee trainer");
+      } catch (error) {
+        console.error("Error scheduling booking:", error);
+        throw new Error("Failed to schedule booking");
+      }
+    },
+
+    traineeRSVPBooking: async (_, { bookingId }) => {
+      try {
+        const booking = await Booking.findById(bookingId);
+        if (!booking) throw new Error("Booking not found");
+        booking.traineeRSVP = true;
+        if (booking.trainerRSVP) {
+          booking.status = "confirmed";
+        }
+        await booking.save();
+        return await booking.populate("trainee trainer");
+      } catch (error) {
+        console.error("Error in trainee RSVP:", error);
+        throw new Error("Failed to RSVP");
+      }
+    },
+
+    trainerRSVPBooking: async (_, { bookingId }) => {
+      try {
+        const booking = await Booking.findById(bookingId);
+        if (!booking) throw new Error("Booking not found");
+        booking.trainerRSVP = true;
+        if (booking.traineeRSVP) {
+          booking.status = "confirmed";
+        }
+        await booking.save();
+        return await booking.populate("trainee").populate("trainer").execPopulate();
+      } catch (error) {
+        console.error("Error in trainer RSVP:", error);
+        throw new Error("Failed to RSVP");
+      }
+    },
     
   
   },

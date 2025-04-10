@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { gql, useMutation } from "@apollo/client";
+import LoadingSpinner from "./LoadingSpinner";
 
 const LOGIN_MUTATION = gql`
   mutation Login($email: String!, $password: String!) {
@@ -12,6 +13,7 @@ const LOGIN_MUTATION = gql`
       email
       languageLevel
       profileImage
+      userType
     }
   }
 `;
@@ -22,6 +24,7 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [loginMutation] = useMutation(LOGIN_MUTATION);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Success and Error messages
   const [errorMessage, setErrorMessage] = useState("");
@@ -60,6 +63,7 @@ const Login = () => {
     // Clear any previous errors before sending the mutation
     setErrors({});
     setErrorMessage("");
+    setIsLoading(true);
 
     try {
       const { data } = await loginMutation({
@@ -70,13 +74,24 @@ const Login = () => {
       });
       if (data?.login) {
         login(data.login); // Pass user data to the context
-        navigate("/dashboard");
+        const role = data.login.userType;
+        if (role === "admin") {  
+          navigate("/admin-home"); // Admin dashboard
+        } else if (role === "trainer") {
+          navigate("/trainer-home"); // Trainer dashboard
+        } else if (role === "pendingTutor") {
+          navigate("/pending-tutor"); // Pending tutor page
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setErrorMessage("Invalid credentials! Please try again.");
       }
     } catch (error) {
       console.error("Login error:", error);
       setErrorMessage("Failed to login. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -139,9 +154,13 @@ const Login = () => {
 
 
         <div className="d-flex justify-content-center mb-3">
-          <button type="submit" className="btn btn-primary mt-2 p-2 ps-4 pe-4">
-            Login
-          </button>
+          {isLoading ? (
+              <LoadingSpinner />
+            ) : (
+              <button type="submit" className="btn btn-primary mt-2 p-2 ps-4 pe-4">
+                Login
+              </button>
+            )}
         </div>
         <div className="text-center">
           <p className="mt-2">

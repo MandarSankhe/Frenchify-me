@@ -19,6 +19,8 @@ type Mutation {
   submitImageAnswer(input: SubmitImageAnswerInput!): ImageMatch
   finishImageMatch(matchId: ID!): ImageMatch
 
+  verifyTutor(userId: ID!): User
+
 }
 
 input UserInput {
@@ -26,6 +28,7 @@ input UserInput {
   email: String!
   password: String!
   languageLevel: String
+  userType: String
 }
 
 input UserUpdateInput {
@@ -42,6 +45,7 @@ type User {
   languageLevel: String
   profileImage: String
   progress: Progress!
+  userType: String
   createdAt: String!
 }
 
@@ -306,4 +310,5 @@ type Query {
   imageMatch(matchId: ID!): ImageMatch
   userImageMatches(userId: ID!): [ImageMatch!]!
   userWritingMatches(userId: ID!): [WritingMatch!]!
+  pendingTutors: [User]
 }

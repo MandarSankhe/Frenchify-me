@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useMutation, gql } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
+import LoadingSpinner from "./LoadingSpinner";
 
 const CREATE_USER_MUTATION = gql`
   mutation CreateUser($input: UserInput!) {
@@ -20,13 +21,14 @@ const Register = () => {
     email: "",
     password: "",
     languageLevel: "Beginner",
+    userType: "trainee"
   });
 
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
   
   const [createUser] = useMutation(CREATE_USER_MUTATION);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   // Success and Error messages
   const [successMessage, setSuccessMessage] = useState("");
@@ -103,6 +105,7 @@ const Register = () => {
     setErrors({});
     setSuccessMessage("");
     setErrorMessage(""); 
+    setLoading(true);
 
     try {
       await createUser({ variables: { input: formData } });
@@ -116,8 +119,11 @@ const Register = () => {
         email: "",
         password: "",
         languageLevel: "Beginner",
+        userType: "trainee"
       });
       setConfirmPassword("");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,123 +132,84 @@ const Register = () => {
       <h2 className="text-primary text-center mb-2">Register</h2>
       <form onSubmit={handleSubmit} noValidate className="mx-auto" style={{ maxWidth: "600px" }}>
         <div className="mb-3">
-          <label htmlFor="username" className="form-label">
-            Username
-          </label>
+          <label htmlFor="username" className="form-label">Username</label>
           {errors.username && (
             <div className="text-danger mb-2 d-flex align-items-center">
               <img src="../error-icon.png" width={17} alt="Error" className="me-2" />
               {errors.username}
             </div>
           )}
-          <input
-            type="text"
-            className="form-control"
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-          />
+          <input type="text" className="form-control" id="username" name="username" value={formData.username} onChange={handleChange} />
         </div>
         <div className="mb-3">
-          <label htmlFor="email" className="form-label">
-            Email address
-          </label>
+          <label htmlFor="email" className="form-label">Email address</label>
           {errors.email && (
             <div className="text-danger mb-2 d-flex align-items-center">
               <img src="../error-icon.png" width={17} alt="Error" className="me-2" />
               {errors.email}
             </div>
           )}
-          <input
-            type="email"
-            className="form-control"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-          />
+          <input type="email" className="form-control" id="email" name="email" value={formData.email} onChange={handleChange} />
         </div>
         <div className="mb-3">
-          <label htmlFor="password" className="form-label">
-            Password
-          </label>
+          <label htmlFor="password" className="form-label">Password</label>
           {errors.password && (
             <div className="text-danger mb-2 d-flex align-items-center">
               <img src="../error-icon.png" width={17} alt="Error" className="me-2" />
               {errors.password}
             </div>
           )}
-          <input
-            type="password"
-            className="form-control"
-            id="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-          />
+          <input type="password" className="form-control" id="password" name="password" value={formData.password} onChange={handleChange} />
         </div>
         <div className="mb-3">
-          <label htmlFor="confirmpassword" className="form-label">
-            Confirm Password
-          </label>
+          <label htmlFor="confirmpassword" className="form-label">Confirm Password</label>
           {errors.confirmPassword && (
             <div className="text-danger mb-2 d-flex align-items-center">
               <img src="../error-icon.png" width={17} alt="Error" className="me-2" />
               {errors.confirmPassword}
             </div>
           )}
-          <input
-            type="password"
-            className="form-control"
-            id="confirmpassword"
-            name="confirmpassword"
-            value={confirmPassword}
-            onChange={handleConfirmPasswordChange}
-          />
+          <input type="password" className="form-control" id="confirmpassword" name="confirmpassword" value={confirmPassword} onChange={handleConfirmPasswordChange} />
         </div>
         <div className="mb-3">
-          <label htmlFor="languageLevel" className="form-label">
-            Language Level
-          </label>
-          <select
-            className="form-select"
-            id="languageLevel"
-            name="languageLevel"
-            value={formData.languageLevel}
-            onChange={handleChange}
-          >
+          <label htmlFor="languageLevel" className="form-label">Language Level</label>
+          <select className="form-select" id="languageLevel" name="languageLevel" value={formData.languageLevel} onChange={handleChange}>
             <option value="Beginner">Beginner</option>
             <option value="Intermediate">Intermediate</option>
             <option value="Advanced">Advanced</option>
           </select>
         </div>
-
-        {/* Success and Error Messages */}
+        <div className="mb-3">
+          <label htmlFor="userType" className="form-label">Account Type</label>
+          <select className="form-select" id="userType" name="userType" value={formData.userType} onChange={handleChange}>
+            <option value="trainee">Student</option>
+            <option value="pendingTutor">Tutor</option>
+          </select>
+        </div>
         {successMessage && (
           <div className="alert alert-success text-center" role="alert">
             {successMessage}
             <Link to="/login" className="alert-link">Login here</Link>.
           </div>
         )}
-
         {errorMessage && (
           <div className="alert alert-danger text-center" role="alert">
             {errorMessage}
           </div>
         )}
-        
         <div className="d-flex justify-content-center mb-3">
-          <button type="submit" className="btn btn-primary mt-2 p-2 ps-4 pe-4">
-            Register
-          </button>
+        {loading ? (
+            <LoadingSpinner />
+          ) : (
+            <button type="submit" className="btn btn-primary mt-2 p-2 ps-4 pe-4">
+              Register
+            </button>
+          )}
         </div>
         <div className="text-center">
           <p className="mt-2">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary">
-              Login
-            </Link>
+            <Link to="/login" className="text-primary">Login</Link>
           </p>
         </div>
       </form>

@@ -156,6 +156,9 @@ const Navbar = () => {
             <NavLink className="nav-link" style={navLinkStyle} to="/headtoheadmatch">Head2Head</NavLink>
           </li>
           <li className="nav-item">
+            <NavLink className="nav-link" style={navLinkStyle} to="/book-service">Book a Service</NavLink>
+          </li>
+          <li className="nav-item">
             <NavLink className="nav-link" style={navLinkStyle} to="/about">About Us</NavLink>
           </li>
         </>

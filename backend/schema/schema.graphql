@@ -20,6 +20,9 @@ type Mutation {
   finishImageMatch(matchId: ID!): ImageMatch
 
   verifyTutor(userId: ID!): User
+  scheduleBooking(input: BookingInput!): Booking!
+  traineeRSVPBooking(bookingId: ID!): Booking!
+  trainerRSVPBooking(bookingId: ID!): Booking!
 
 }
 
@@ -294,8 +297,29 @@ input SubmitImageAnswerInput {
 }
 # Image Exam end
 
+# Booking start
+type Booking {
+  id: ID!
+  trainee: User!
+  trainer: User!
+  scheduledTime: String!
+  traineeRSVP: Boolean!
+  trainerRSVP: Boolean!
+  status: String!
+  createdAt: String!
+}
+
+input BookingInput {
+  traineeId: ID!
+  trainerId: ID!
+  scheduledTime: String!
+}
+
+# Booking end
+
 type Query {
   users: [User]
+  trainers: [User] 
   tcfReadings: [TCFReading]
   testHistories(userId: ID!): [History]
   tcfWritings: [TCFWriting] #20Feb2024
@@ -311,4 +335,6 @@ type Query {
   userImageMatches(userId: ID!): [ImageMatch!]!
   userWritingMatches(userId: ID!): [WritingMatch!]!
   pendingTutors: [User]
+  bookingsByTrainer(trainerId: ID!): [Booking!]!
+  activeBookingByTrainee(traineeId: ID!): Booking
 }

@@ -165,8 +165,9 @@ const Register = () => {
 
   /*
    * The main container: large "card" with two columns
-   *   - Left side: "Bienvenue!" text, plus snippet
-   *   - Right side: actual form
+   * For mobile, only the registration form is visible.
+   * For PC, the registration form appears on the left 
+   * and the blue "Bienvenue!" panel appears on the right.
    */
   const containerStyle = {
     minHeight: "100vh",
@@ -178,7 +179,7 @@ const Register = () => {
     padding: "2rem",
   };
 
-  // Outer card with two columns (flex children)
+  // Outer card with two columns
   const cardStyle = {
     width: "100%",
     maxWidth: "1200px",
@@ -189,9 +190,16 @@ const Register = () => {
     overflow: "hidden",
   };
 
-  // Left side: "Bienvenue!" area + snippet
-  const leftSideStyle = {
-    flex: "1",
+  // Use Bootstrap grid to assign wider width for form and narrower for blue panel on PC
+  // On mobile, only the form panel is shown.
+  const formPanelStyle = {
+    padding: "3rem 0",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+  };
+
+  const bluePanelStyle = {
     backgroundColor: frenchBlue,
     color: frenchWhite,
     display: "flex",
@@ -199,35 +207,6 @@ const Register = () => {
     justifyContent: "center",
     padding: "3rem 2rem",
     gap: "2rem",
-  };
-
-  const headingStyle = {
-    fontSize: "2.25rem",
-    fontWeight: "700",
-    margin: 0,
-    lineHeight: 1.2,
-  };
-
-  const subHeadingStyle = {
-    fontSize: "1rem",
-    lineHeight: 1.5,
-    opacity: 0.9,
-    marginTop: "0.75rem",
-  };
-
-  const snippetContainerStyle = {
-    fontSize: "0.85rem",
-    lineHeight: 1.4,
-    opacity: 0.9,
-  };
-
-  // Right side: registration form
-  const rightSideStyle = {
-    flex: "1.3",
-    padding: "3rem",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
   };
 
   // Two-column input rows
@@ -260,342 +239,380 @@ const Register = () => {
     cursor: "pointer",
   };
 
+  // Additional style objects for blue panel text
+  const headingStyle = {
+    fontSize: "2.25rem",
+    fontWeight: "700",
+    margin: 0,
+    lineHeight: 1.2,
+  };
+
+  const subHeadingStyle = {
+    fontSize: "1rem",
+    lineHeight: 1.5,
+    opacity: 0.9,
+    marginTop: "0.75rem",
+  };
+
+  const snippetContainerStyle = {
+    fontSize: "0.85rem",
+    lineHeight: 1.4,
+    opacity: 0.9,
+  };
+
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        
-        {/* LEFT COLUMN: "Bienvenue!" and snippet */}
-        <div style={leftSideStyle}>
-          <div>
+        {/* Registration Form Panel
+            For mobile: occupy full width.
+            For PC: occupy 8/12 columns.
+        */}
+        <div className="col-12 col-md-8 order-1 order-md-1" style={formPanelStyle}>
+          <div style={{ maxWidth: "90%", margin: "0 1rem", width: "100%" }}>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h2
+                style={{
+                  fontWeight: "700",
+                  marginBottom: "0.5rem",
+                  fontSize: "1.5rem",
+                  color: frenchBlue,
+                }}
+              >
+                Create Your Account
+              </h2>
+              <span style={{ color: "#4A5568" }}>
+                (Commencez votre voyage linguistique!)
+              </span>
+            </div>
+
+            {/* The Form */}
+            <form onSubmit={handleSubmit} noValidate>
+              {/* First Row: username + email */}
+              <div style={twoColumnStyle}>
+                <div style={columnStyle}>
+                  {/* Username */}
+                  <div style={{ marginBottom: "1rem", position: "relative" }}>
+                    <User
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        left: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Username (Nom d'utilisateur)"
+                      style={inputStyle}
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                    />
+                    {errors.username && (
+                      <div style={errorMessageStyle}>
+                        <AlertCircle size={18} style={{ marginRight: "8px" }} />
+                        {errors.username}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={columnStyle}>
+                  {/* Email */}
+                  <div style={{ marginBottom: "1rem", position: "relative" }}>
+                    <Mail
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        left: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                      }}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email Address (Adresse e-mail)"
+                      style={inputStyle}
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                    />
+                    {errors.email && (
+                      <div style={errorMessageStyle}>
+                        <AlertCircle size={18} style={{ marginRight: "8px" }} />
+                        {errors.email}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Second Row: password + confirm password */}
+              <div style={twoColumnStyle}>
+                <div style={columnStyle}>
+                  {/* Password */}
+                  <div style={{ marginBottom: "1rem", position: "relative" }}>
+                    <Lock
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        left: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                      }}
+                    />
+                    <input
+                      type="password"
+                      placeholder="Password (Mot de passe)"
+                      style={inputStyle}
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                    />
+                    {errors.password && (
+                      <div style={errorMessageStyle}>
+                        <AlertCircle size={18} style={{ marginRight: "8px" }} />
+                        {errors.password}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={columnStyle}>
+                  {/* Confirm Password */}
+                  <div style={{ marginBottom: "1rem", position: "relative" }}>
+                    <Lock
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        left: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                      }}
+                    />
+                    <input
+                      type="password"
+                      placeholder="Confirm Password (Confirmez le mot de passe)"
+                      style={inputStyle}
+                      value={confirmPassword}
+                      onChange={handleConfirmPasswordChange}
+                    />
+                    {errors.confirmPassword && (
+                      <div style={errorMessageStyle}>
+                        <AlertCircle size={18} style={{ marginRight: "8px" }} />
+                        {errors.confirmPassword}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Third Row: languageLevel + userType */}
+              <div style={twoColumnStyle}>
+                <div style={columnStyle}>
+                  {/* Language Level */}
+                  <div style={{ marginBottom: "1rem", position: "relative" }}>
+                    <Languages
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        left: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                      }}
+                    />
+                    <select
+                      style={selectStyle}
+                      id="languageLevel"
+                      name="languageLevel"
+                      value={formData.languageLevel}
+                      onChange={handleChange}
+                    >
+                      <option value="Beginner">Beginner (Débutant)</option>
+                      <option value="Intermediate">
+                        Intermediate (Intermédiaire)
+                      </option>
+                      <option value="Advanced">Advanced (Avancé)</option>
+                    </select>
+                    <ChevronDown
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        right: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={columnStyle}>
+                  {/* User Type */}
+                  <div style={{ marginBottom: "1rem", position: "relative" }}>
+                    <User
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        left: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                      }}
+                    />
+                    <select
+                      style={selectStyle}
+                      id="userType"
+                      name="userType"
+                      value={formData.userType}
+                      onChange={handleChange}
+                    >
+                      <option value="trainee">Student (Étudiant)</option>
+                      <option value="pendingTutor">Tutor (Tuteur)</option>
+                    </select>
+                    <ChevronDown
+                      size={20}
+                      style={{
+                        position: "absolute",
+                        right: "16px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#718096",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div style={{ textAlign: "center", marginTop: "2rem" }}>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    maxWidth: "360px",
+                    backgroundColor: frenchBlue,
+                    color: frenchWhite,
+                    padding: "0.85rem 1.25rem",
+                    borderRadius: "12px",
+                    border: "none",
+                    fontWeight: "700",
+                    fontSize: "1rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {loading ? (
+                    <LoadingSpinner size="26px" />
+                  ) : (
+                    <>
+                      Create Account
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: "0.85em",
+                          fontWeight: "500",
+                          opacity: 0.8,
+                        }}
+                      >
+                        (Créer un compte)
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Standard bottom snippet (Industry standard UI) */}
+              <div
+                className="d-block text-center"
+                style={{
+                  fontSize: "0.85rem",
+                  color: "#718096",
+                  marginTop: "1rem",
+                }}
+              >
+                <p style={{ margin: 0 }}>
+                  Already have an account?{" "}
+                  <Link
+                    to="/login"
+                    style={{
+                      color: frenchBlue,
+                      fontWeight: "600",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Login
+                  </Link>
+                </p>
+              </div>
+
+              {/* Success Message */}
+              {successMessage && (
+                <div style={successMessageStyle}>
+                  <span style={{ fontSize: "1.4em" }}>🎉</span>
+                  {successMessage}
+                  <Link to="/login" style={successLinkStyle}>
+                    Login here (Connectez-vous ici)
+                  </Link>
+                </div>
+              )}
+
+              {/* Error Message (If needed) */}
+              {errorMessage && (
+                <div style={errorBoxStyle}>
+                  <AlertCircle size={18} style={{ marginRight: "8px" }} />
+                  {errorMessage}
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+
+        {/* Blue Panel: For PC only. Visible on md+ with swapped order, and takes less width (4 columns) */}
+        <div className="d-none d-md-flex col-12 col-md-4 order-md-2" style={bluePanelStyle}>
+          <div className="p-4" style={{ position: "relative", zIndex: 1 }}>
             <h1 style={headingStyle}>Bienvenue!</h1>
             <p style={subHeadingStyle}>
-              Join our community of French language enthusiasts
-              and take your skills to the next level.
+              Join our community of French language enthusiasts and take your skills to the next level.
             </p>
-          </div>
-
-          <div style={snippetContainerStyle}>
-            {/* Already have an account? */}
-            <p style={{ marginBottom: "0.5rem" }}>
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                style={{
-                  color: frenchRed,
-                  fontWeight: "bold",
-                  textDecoration: "none",
-                }}
-              >
-                Sign In (Se connecter)
-              </Link>
-            </p>
-            {/* Terms of Service */}
-            <p>
-              By continuing, you agree to our <br />
-              <Link
-                to="/terms"
-                style={{ color: frenchRed, textDecoration: "none" }}
-              >
-                Terms of Service (Conditions d'utilisation)
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Registration Form */}
-        <div style={rightSideStyle}>
-          {/* 
-            Title, success message, etc.
-            You can customize heading text here if you want
-          */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h2
-              style={{
-                fontWeight: "700",
-                marginBottom: "0.5rem",
-                fontSize: "1.5rem",
-                color: darkText,
-              }}
-            >
-              Create Your Account
-            </h2>
-            <span style={{ color: "#4A5568" }}>
-              (Commencez votre voyage linguistique!)
-            </span>
-          </div>
-
-          {/* The Form */}
-          <form onSubmit={handleSubmit} noValidate>
-            {/* 
-              Two-column layout for 
-              - username & email
-              - password & confirm password
-              - language level & userType
-            */}
-            {/* First Row: username + email */}
-            <div style={twoColumnStyle}>
-              <div style={columnStyle}>
-                {/* Username */}
-                <div style={{ marginBottom: "1rem", position: "relative" }}>
-                  <User
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      left: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Username (Nom d'utilisateur)"
-                    style={inputStyle}
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                  />
-                  {errors.username && (
-                    <div style={errorMessageStyle}>
-                      <AlertCircle size={18} style={{ marginRight: "8px" }} />
-                      {errors.username}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={columnStyle}>
-                {/* Email */}
-                <div style={{ marginBottom: "1rem", position: "relative" }}>
-                  <Mail
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      left: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                    }}
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email Address (Adresse e-mail)"
-                    style={inputStyle}
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                  {errors.email && (
-                    <div style={errorMessageStyle}>
-                      <AlertCircle size={18} style={{ marginRight: "8px" }} />
-                      {errors.email}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Second Row: password + confirm password */}
-            <div style={twoColumnStyle}>
-              <div style={columnStyle}>
-                {/* Password */}
-                <div style={{ marginBottom: "1rem", position: "relative" }}>
-                  <Lock
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      left: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                    }}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password (Mot de passe)"
-                    style={inputStyle}
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                  {errors.password && (
-                    <div style={errorMessageStyle}>
-                      <AlertCircle size={18} style={{ marginRight: "8px" }} />
-                      {errors.password}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={columnStyle}>
-                {/* Confirm Password */}
-                <div style={{ marginBottom: "1rem", position: "relative" }}>
-                  <Lock
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      left: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                    }}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Confirm Password (Confirmez le mot de passe)"
-                    style={inputStyle}
-                    value={confirmPassword}
-                    onChange={handleConfirmPasswordChange}
-                  />
-                  {errors.confirmPassword && (
-                    <div style={errorMessageStyle}>
-                      <AlertCircle size={18} style={{ marginRight: "8px" }} />
-                      {errors.confirmPassword}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Third Row: languageLevel + userType */}
-            <div style={twoColumnStyle}>
-              <div style={columnStyle}>
-                {/* Language Level */}
-                <div style={{ marginBottom: "1rem", position: "relative" }}>
-                  <Languages
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      left: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                    }}
-                  />
-                  <select
-                    style={selectStyle}
-                    id="languageLevel"
-                    name="languageLevel"
-                    value={formData.languageLevel}
-                    onChange={handleChange}
-                  >
-                    <option value="Beginner">Beginner (Débutant)</option>
-                    <option value="Intermediate">Intermediate (Intermédiaire)</option>
-                    <option value="Advanced">Advanced (Avancé)</option>
-                  </select>
-                  <ChevronDown
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      right: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={columnStyle}>
-                {/* User Type */}
-                <div style={{ marginBottom: "1rem", position: "relative" }}>
-                  <User
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      left: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                    }}
-                  />
-                  <select
-                    style={selectStyle}
-                    id="userType"
-                    name="userType"
-                    value={formData.userType}
-                    onChange={handleChange}
-                  >
-                    <option value="trainee">Student (Étudiant)</option>
-                    <option value="pendingTutor">Tutor (Tuteur)</option>
-                  </select>
-                  <ChevronDown
-                    size={20}
-                    style={{
-                      position: "absolute",
-                      right: "16px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#718096",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div style={{ textAlign: "center", marginTop: "2rem" }}>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  width: "100%",
-                  maxWidth: "360px",
-                  backgroundColor: frenchBlue,
-                  color: frenchWhite,
-                  padding: "0.85rem 1.25rem",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: "700",
-                  fontSize: "1rem",
-                  cursor: "pointer",
-                }}
-              >
-                {loading ? (
-                  <LoadingSpinner size="26px" />
-                ) : (
-                  <>
-                    Create Account
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: "0.85em",
-                        fontWeight: "500",
-                        opacity: 0.8,
-                      }}
-                    >
-                      (Créer un compte)
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Success Message */}
-            {successMessage && (
-              <div style={successMessageStyle}>
-                <span style={{ fontSize: "1.4em" }}>🎉</span>
-                {successMessage}
-                <Link to="/login" style={successLinkStyle}>
-                  Login here (Connectez-vous ici)
+            <div style={snippetContainerStyle}>
+              <p style={{ marginBottom: "0.5rem" }}>
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  style={{
+                    color: frenchRed,
+                    fontWeight: "bold",
+                    textDecoration: "none",
+                  }}
+                >
+                  Sign In (Se connecter)
                 </Link>
-              </div>
-            )}
-
-            {/* Error Message (If needed) */}
-            {errorMessage && (
-              <div style={errorBoxStyle}>
-                <AlertCircle size={18} style={{ marginRight: "8px" }} />
-                {errorMessage}
-              </div>
-            )}
-          </form>
+              </p>
+              <p>
+                By continuing, you agree to our <br />
+                <Link
+                  to="/terms"
+                  style={{ color: frenchRed, textDecoration: "none" }}
+                >
+                  Terms of Service (Conditions d'utilisation)
+                </Link>
+              </p>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   );
@@ -645,6 +662,26 @@ const successLinkStyle = {
   marginLeft: "6px",
   fontWeight: "600",
   textDecoration: "none",
+};
+
+const headingStyle = {
+  fontSize: "2.25rem",
+  fontWeight: "700",
+  margin: 0,
+  lineHeight: 1.2,
+};
+
+const subHeadingStyle = {
+  fontSize: "1rem",
+  lineHeight: 1.5,
+  opacity: 0.9,
+  marginTop: "0.75rem",
+};
+
+const snippetContainerStyle = {
+  fontSize: "0.85rem",
+  lineHeight: 1.4,
+  opacity: 0.9,
 };
 
 export default Register;

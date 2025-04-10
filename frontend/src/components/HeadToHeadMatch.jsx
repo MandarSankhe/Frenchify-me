@@ -1,71 +1,134 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-// Define color constants
 const frenchBlue = "#0055A4";
-const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
+const deepGray = "#1f1f1f";
+const softGray = "#f8f9fa";
 
 const HeadToHeadMatch = () => {
   const matches = [
     {
-      title: "Writing Exam",
-      image: "https://i0.wp.com/writershelpingwriters.net/wp-content/uploads/2021/06/iss_4266_03847.jpg?ssl=1", 
-      description: "Test your writing skills in a head-to-head match.",
+      title: "Writing H2H",
+      image: "/images/writing-h2h.png",
+      description: "Test your writing skills in a head-to-head match, feedback will be provided by AI.",
       route: "/writing-match",
     },
     {
-      title: "Puzzle Exam",
-      image: "https://media.istockphoto.com/id/1746657656/vector/confrontation.jpg?s=612x612&w=0&k=20&c=-Uq9mVh8v3VzctOu2kKeOVZr9dv7KiOsPDCRojMR8eE=", 
-      description: "Solve puzzles and outsmart your opponent.",
+      title: "Image Puzzle H2H",
+      image: "/images/image-h2h.png",
+      description: "Solve image puzzles, guess the word for the given image, and outsmart your opponent.",
       route: "/image-match",
-    },
-    {
-      title: "Quiz Exam",
-      image: "https://media.gq.com/photos/5a85afc4a5e5ab37549d55ce/16:9/w_2560%2Cc_limit/gq-trivia.jpg", 
-      description: "Answer quick questions in a thrilling quiz match.",
-      route: "/quiz-match",
     },
   ];
 
   return (
-    <div className="container my-5">
-      <h2 className="text-center mb-4" style={{ color: frenchBlue, fontFamily: 'Arial, sans-serif' }}>
+    <div className="container py-5" style={{ backgroundColor: softGray }}>
+      <h2
+        className="text-center mb-5"
+        style={{
+          color: frenchBlue,
+          fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+          fontWeight: 700,
+          fontSize: "2.5rem",
+          textShadow: "1px 1px 2px rgba(0,0,0,0.15)",
+        }}
+      >
         Choose Your Match Type
       </h2>
-      <div className="row">
+      <div className="row justify-content-center">
         {matches.map((match, index) => (
-          <div key={index} className="col-md-4 d-flex align-items-stretch mb-4">
+          <div
+            key={index}
+            className="col-md-6 col-lg-4 d-flex align-items-stretch mb-4"
+          >
             <div
-              className="card shadow-sm border-0"
+              className="card shadow-lg border-0 h-100"
               style={{
-                borderRadius: "15px",
-                backgroundColor: frenchWhite,
+                borderRadius: "20px",
                 overflow: "hidden",
-                height: "100%",
+                backgroundColor: "#ffffff",
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.03)";
+                e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.075)";
               }}
             >
-              <img 
-                src={match.image} 
-                className="card-img-top" 
-                alt={match.title} 
-                style={{ height: "200px", objectFit: "cover", borderTopLeftRadius: "15px", borderTopRightRadius: "15px" }}
-              />
-              <div className="card-body d-flex flex-column">
-                <h5 className="card-title" style={{ color: frenchBlue }}>{match.title}</h5>
-                <p className="card-text flex-grow-1" style={{ color: "#555" }}>{match.description}</p>
-                <Link 
-                  to={match.route} 
-                  className="btn"
+              <div
+                style={{
+                  position: "relative",
+                  height: "250px",
+                  overflow: "hidden",
+                  backgroundColor: "#eef3f7",
+                }}
+              >
+                <img
+                  src={match.image}
+                  className="card-img-top"
+                  alt={match.title}
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "auto",
+                    height: "100%",
+                    maxWidth: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+              <div className="card-body d-flex flex-column p-4">
+                <h5
+                  className="card-title"
+                  style={{
+                    color: deepGray,
+                    fontWeight: 600,
+                    fontSize: "1.6rem",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  {match.title}
+                </h5>
+                <p
+                  className="card-text flex-grow-1"
+                  style={{
+                    color: "#555",
+                    fontSize: "1.05rem",
+                    lineHeight: "1.6",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  {match.description}
+                </p>
+                <Link
+                  to={match.route}
+                  className="btn align-self-start"
                   style={{
                     backgroundColor: frenchBlue,
                     color: frenchWhite,
-                    borderRadius: "20px",
-                    padding: "10px 20px",
-                    textAlign: "center",
-                    fontWeight: "bold",
-                    transition: "background-color 0.3s ease",
+                    borderRadius: "25px",
+                    padding: "12px 28px",
+                    fontWeight: "600",
+                    fontSize: "1rem",
+                    letterSpacing: "0.5px",
+                    boxShadow: "0 4px 12px rgba(0, 85, 164, 0.3)",
+                    transition: "all 0.3s ease",
+                    textDecoration: "none",
                   }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.boxShadow =
+                      "0 6px 18px rgba(0, 85, 164, 0.5)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.boxShadow =
+                      "0 4px 12px rgba(0, 85, 164, 0.3)")
+                  }
                 >
                   Start Match
                 </Link>

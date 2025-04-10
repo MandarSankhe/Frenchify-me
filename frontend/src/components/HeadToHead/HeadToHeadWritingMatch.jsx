@@ -343,7 +343,7 @@ const HeadToHeadWritingMatch = () => {
   const [finalizeMatch] = useMutation(FINALIZE_WRITING_MATCH);
 
   const handleCreateMatch = async () => {
-    if (!opponentUsername || !selectedExam) {
+    if (!selectedOpponent || !selectedExam) {
       alert("Please enter opponent username and select an exam.");
       return;
     }
@@ -353,7 +353,7 @@ const HeadToHeadWritingMatch = () => {
         variables: {
           input: {
             initiatorId: user.id,
-            opponentUsername,
+            opponentUsername: selectedOpponent,
             examId: selectedExam.id,
             examTitle: selectedExam.title,
             examQuestion: selectedExam.exercise1,

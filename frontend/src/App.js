@@ -25,6 +25,9 @@ import UserSettings from "./components/UserSettings";
 import Donation from "./components/Donation";
 import About from "./components/About";
 import Footer from "./components/Footer";
+import PendingTutorHome from "./components/Trainer/PendingTutorHome";
+import TrainerHome from "./components/Trainer/TrainerHome";
+import AdminHome from "./components/Admin/AdminHome";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -244,6 +247,45 @@ const App = () => {
                         <Footer />
                     </div>
                 </>
+            ),
+        },
+        {
+            path: "/pending-tutor",
+            element: (
+              <>
+                <Navbar />
+                <div style={containerStyle}>
+                  <ProtectedRoute>
+                    <PendingTutorHome />
+                  </ProtectedRoute>
+                </div>
+              </>
+            ),
+        },
+        {
+            path: "/trainer-home",
+            element: (
+              <>
+                <Navbar />
+                <div style={containerStyle}>
+                  <ProtectedRoute>
+                    <TrainerHome />
+                  </ProtectedRoute>
+                </div>
+              </>
+            ),
+        },
+        {
+            path: "/admin-home",
+            element: (
+              <>
+                <Navbar />
+                <div style={containerStyle}>
+                  <ProtectedRoute>
+                    <AdminHome />
+                  </ProtectedRoute>
+                </div>
+              </>
             ),
         },
     ]);

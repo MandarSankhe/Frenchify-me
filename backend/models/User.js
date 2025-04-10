@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
 
   //Tracks the user's proficiency.
   languageLevel: { type: String, enum: ["Beginner", "Intermediate", "Advanced"], default: "Beginner" },
+  userType: { type: String, enum: ["trainee", "trainer", "admin", "pendingTutor"], default: "trainee" },
   progress: {
     type: Map,
     of: Number, // Stores progress for each exercise type, e.g., { reading: 70, writing: 50 }

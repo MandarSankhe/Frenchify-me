@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { ReactMic } from "react-mic";
 import LoadingSpinner from "./LoadingSpinner";
 import { FaRedo, FaPlay, FaPause } from "react-icons/fa";
+import TalkingHead from "./TalkingHead";
 // import { FaRedo, FaPlay, FaPause } from "../../node_modules/react-icons/fa";
 
 // Use the same exam image logic as in your writing mock.
@@ -10,30 +11,24 @@ const getExamImage = (topic) => {
   const lower = topic.toLowerCase();
 
   if (lower.includes("vols")) {
-    return "https://www.tesl-lugano.ch/wp-content/uploads/2023/10/francese-cover-ragazzi.jpg";
+    return "images/speaking3.png";
   } else if (lower.includes("tourisme")) {
-    return "https://www.learnfrenchathome.com/wp-content/uploads/2023/12/IB-French-A-Level-French-Courses-GCSE.jpg";
+    return "images/speaking1.png";
   } else if (lower.includes("technologies")) {
-    return "https://www.frenchclass.in/wp-content/uploads/2024/04/French-Language-Certifications-Banner-Image.webp";
+    return "images/speaking2.png";
   }
-  return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
+  return "images/speaking0.png"; // Default image if no match found
 };
 
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
 
-// Scoring function
-const calculateScore = (userResponses) => {
-  // Each response gets 3 points
-
-  const total = Object.values(userResponses).reduce((sum) => sum + 3, 0);
-
-  // Maximum possible: 9 responses * 3 = 27, scale to 10
-  return Math.round((total / 27) * 10);
-};
-
 const SpeakingMock = () => {
+
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
+
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
 
@@ -60,6 +55,15 @@ const SpeakingMock = () => {
 
   const overallQuestionIndex = (currentMainQuestionRef.current - 1) * 3 + followupCountRef.current + 1;
 
+  // Ref for chat container to scroll to bottom
+  const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; // Scroll to bottom
+    }
+  }, [conversationHistory]);
+
   // Fetch speaking exams from GraphQL
   useEffect(() => {
     const fetchAllTCFSpeakings = async () => {
@@ -75,7 +79,7 @@ const SpeakingMock = () => {
         }
       `;
       try {
-        const res = await fetch("http://localhost:4000/graphql", {
+        const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
@@ -148,7 +152,7 @@ const SpeakingMock = () => {
   const fetchDBQuestion = async (mainQNumber) => {
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/initial-question", {
+      const res = await fetch(`${API_ENDPOINT}/api/initial-question`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: selectedExam.topic, questionNumber: mainQNumber }),
@@ -176,6 +180,51 @@ const SpeakingMock = () => {
     setIsLoading(false);
   };
 
+  // Scoring function
+  const calculateScore = async (userResponses, conversationHistory) => {
+    try {
+
+      // Extract AI responses from the conversation history
+      const aiResponses = conversationHistory
+      .filter((msg) => msg.role === "ai")
+      .map((msg) => msg.text)
+      .join("\n");
+      
+      const response = await fetch(`${API_ENDPOINT}/api/calculate-speaking-score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userResponses, topic: selectedExam.topic, aiResponses }),
+      });
+      const data = await response.json();
+      return data.score;
+    } catch (error) {
+      console.error("Error calculating speaking score:", error);
+      return null;
+    }
+  };
+
+  // Generate final feedback
+  const generateFinalFeedback = async (userResponses, conversationHistory) => {
+    // Extract AI responses from conversationHistory
+    const aiResponses = conversationHistory
+      .filter(msg => msg.role === "ai")
+      .map(msg => msg.text)
+      .join("\n");
+  
+    try {
+      const response = await fetch(`${API_ENDPOINT}/api/generate-speaking-final-feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userResponses, topic: selectedExam.topic, aiResponses }),
+      });
+      const data = await response.json();
+      return data.feedback;
+    } catch (error) {
+      console.error("Error generating final feedback:", error);
+      return null;
+    }
+  };
+  
   // Start Conversation Screen (before any conversation)
   if (selectedExam && conversationHistory.length === 0) {
     return (
@@ -261,7 +310,7 @@ const SpeakingMock = () => {
       formData.append("file", recordedBlob.blob);
 
       // Ensure the speech is recognized in French
-      const speechResponse = await fetch("http://localhost:4000/api/speech-to-text", {
+      const speechResponse = await fetch(`${API_ENDPOINT}/api/speech-to-text`, {
         method: "POST",
         body: formData,
       });
@@ -287,7 +336,7 @@ const SpeakingMock = () => {
         console.log("#rp: current DB question no: ", currentMainQuestionRef.current);
         // If less than 2 AI follow-ups for the current DB question, generate the next AI follow-up
         if (followupCountRef.current < 2) {
-          const aiResponseRes = await fetch("http://localhost:4000/api/ai-response-to-speech", {
+          const aiResponseRes = await fetch(`${API_ENDPOINT}/api/ai-response-to-speech`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -331,7 +380,7 @@ const SpeakingMock = () => {
           console.log("Auto-fetching next DB question: mainQuestion", currentMainQuestionRef.current);
           setIsLoading(true);
           try {
-            const nextRes = await fetch("http://localhost:4000/api/initial-question", {
+            const nextRes = await fetch(`${API_ENDPOINT}/api/initial-question`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ topic: selectedExam.topic, questionNumber: currentMainQuestionRef.current }),
@@ -380,12 +429,15 @@ const SpeakingMock = () => {
   };
 
   // handleFinishTest: When currentMainQuestion === 3 and followupCount === 2 (Q9 reached)
-  const handleFinishTest = () => {
-    const score = calculateScore(userResponses);
+  const handleFinishTest = async () => {
+    setIsLoading(true);
+    const score = await calculateScore(userResponses, conversationHistory);
+    const finalFeedbackApi = await generateFinalFeedback(userResponses, conversationHistory);
     setFinalScore(score);
-    setFinalFeedback("Final Feedback: " + JSON.stringify(userResponses)); // TODO rachna
+    setFinalFeedback("Final Feedback: " + finalFeedbackApi);
+    setIsLoading(false);
 
-    // Save user score to database
+    // Save user score to database: TODO Mandar/Rachna
     
   };
 
@@ -414,9 +466,12 @@ const SpeakingMock = () => {
                     src={getExamImage(exam.topic)}
                     className="card-img-top"
                     alt="Speaking Exam"
-                    style={{ height: "200px", objectFit: "cover" }}
+                    style={{ width: '100%',
+                      height: 'auto',
+                      maxHeight: '400px',
+                      objectFit: 'contain' }}
                   />
-                  <div className="card-body">
+                  <div className="card-body text-center">
                     <h4 className="card-title">{exam.topic}</h4>
                   </div>
                 </div>
@@ -508,108 +563,170 @@ const SpeakingMock = () => {
     <div className="container my-5">
       {isLoading && <LoadingSpinner />}
   
-      <div className="mb-4">
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
         <button
           className="btn"
           style={{
             backgroundColor: frenchBlue,
             color: frenchWhite,
-            marginRight: "1rem",
+            padding: "0.5rem 1rem",
+            borderRadius: "0.25rem"
           }}
           onClick={() => setSelectedExam(null)}
         >
           Back to Exam Selection
         </button>
+        <h2 className="mb-0" style={{ color: frenchBlue }}>
+          Speaking Exam: {selectedExam.topic}
+        </h2>
       </div>
-      <h2 className="text-center mb-4" style={{ color: frenchBlue }}>
-        Speaking Exam: {selectedExam.topic}
-      </h2>
   
-      <div className="chat-container mb-4" style={{ maxHeight: "300px", overflowY: "auto" }}>
-        {conversationHistory.length > 0 &&
-          conversationHistory
-            .slice()
-            .reverse()
-            .map((msg) => (
+      {/* Main Content */}
+      <div className="row g-4">
+        {/* Left Column - Talking Head and Audio Wave */}
+        <div className="col-md-5">
+          <div className="sticky-top" style={{ top: "1rem" }}>
+            <TalkingHead audioRef={audioRef} />
+            <div className="mt-4">
               <div
-                key={msg.id}
-                className="card mb-3"
                 style={{
-                  backgroundColor: msg.role === "user" ? "#e6f7ff" : "#f1f1f1",
-                  border: msg.role === "user" ? `2px solid ${frenchBlue}` : "1px solid #ccc",
-                  padding: "1rem",
                 }}
               >
-                <h5 style={{ color: msg.role === "user" ? frenchBlue : frenchRed }}>
-                  {msg.role === "user" ? "🗣 You said:" : "🤖 AI Response:"}
-                </h5>
-                <p>{msg.text}</p>
+                <ReactMic
+                  record={recording}
+                  className="sound-wave"
+                  onStop={onStop}
+                  strokeColor={frenchBlue}
+                  backgroundColor="#FFFFFF"
+                  mimeType="audio/wav"
+                  visualSetting="sinewave"
+                  width={300}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        {/* Right Column - Chat */}
+        <div className="col-md-7">
+          <div
+            ref={chatContainerRef}
+            className="chat-container"
+            style={{
+              height: "60vh",
+              overflowY: "auto",
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "0.5rem",
+              scrollBehavior: "smooth"
+            }}
+          >
+            {conversationHistory.map((msg) => (
+              <div
+                key={msg.id}
+                className="d-flex mb-3"
+                style={{
+                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start"
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: msg.role === "user" ? "#DCF8C6" : "#FFFFFF",
+                    border: "1px solid #ccc",
+                    borderRadius: "15px",
+                    padding: "0.75rem 1rem",
+                    maxWidth: "85%",
+                    boxShadow: "0px 1px 3px rgba(0,0,0,0.1)"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.85rem",
+                      marginBottom: "0.25rem",
+                      color: "#555"
+                    }}
+                  >
+                    {msg.role === "user" ? "🗣 You said:" : "🤖 AI Response:"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1rem",
+                      color: "#000",
+                      whiteSpace: "pre-wrap"
+                    }}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
               </div>
             ))}
-      </div>
+          </div>
   
-      <div className="text-center my-4">
-        <button
-          className="btn me-2"
-          style={{
-            backgroundColor: frenchBlue,
-            color: frenchWhite,
-            padding: "0.75rem 1.5rem",
-            fontSize: "1.1rem",
-            borderRadius: "0.3rem",
-          }}
-          onClick={startRecording}
-          disabled={recording}
-        >
-          Start Recording
-        </button>
-        <button
-          className="btn me-2"
-          style={{
-            backgroundColor: frenchRed,
-            color: frenchWhite,
-            padding: "0.75rem 1.5rem",
-            fontSize: "1.1rem",
-            borderRadius: "0.3rem",
-          }}
-          onClick={stopRecording}
-          disabled={!recording}
-        >
-          Stop Recording
-        </button>
-        {/* Replay and Pause buttons */}
-        <button
-          className="btn me-2"
-          title="Replay audio"
-          onClick={handleReplayAudio}
-          style={{ backgroundColor: "transparent", border: "none" }}
-        >
-          <FaRedo size={24} color={frenchBlue} />
-        </button>
-        <button
-          className="btn me-2"
-          onClick={toggleAudioPlayback}
-          style={{ backgroundColor: "transparent", border: "none" }}
-        >
-          {isAudioPlaying ? (
-            <FaPause size={24} color={frenchRed} />
-          ) : (
-            <FaPlay size={24} color={frenchBlue} />
-          )}
-        </button>
-        <div className="mt-3">
-          <ReactMic
-            record={recording}
-            className="sound-wave"
-            onStop={onStop}
-            strokeColor={frenchBlue}
-            backgroundColor="#fff"
-            mimeType="audio/wav"
-          />
+          {/* Recording Controls */}
+          <div className="text-center mt-4">
+            {!recording ? (
+              <button
+                className="btn"
+                onClick={startRecording}
+                style={{
+                  backgroundColor: frenchBlue,
+                  color: frenchWhite,
+                  padding: "0.75rem 2rem",
+                  fontSize: "1.1rem",
+                  borderRadius: "50px",
+                  border: "none",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)"
+                }}
+              >
+                <span role="img" aria-label="microphone" className="me-2">🎤</span>
+                Start Recording
+              </button>
+            ) : (
+              <button
+                className="btn"
+                onClick={stopRecording}
+                style={{
+                  backgroundColor: frenchRed,
+                  color: frenchWhite,
+                  padding: "0.75rem 2rem",
+                  fontSize: "1.1rem",
+                  borderRadius: "50px",
+                  border: "none",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)"
+                }}
+              >
+                <span role="img" aria-label="stop" className="me-2">⏹</span>
+                Stop Recording
+              </button>
+            )}
+  
+            <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+              <button
+                className="btn"
+                title="Replay audio"
+                onClick={handleReplayAudio}
+                style={{ backgroundColor: "transparent", border: "none" }}
+              >
+                <FaRedo size={24} color={frenchBlue} />
+              </button>
+              <button
+                className="btn"
+                onClick={toggleAudioPlayback}
+                style={{ backgroundColor: "transparent", border: "none" }}
+              >
+                {isAudioPlaying ? (
+                  <FaPause size={24} color={frenchRed} />
+                ) : (
+                  <FaPlay size={24} color={frenchBlue} />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
   
-      {/* Finish Test Button: when on Q3 DB and 2 follow-ups done (i.e., Q9 reached) */}
+      {/* Finish Test Button */}
       {currentMainQuestion === 3 && followupCount === 2 && finalScore === null && (
         <div className="text-center my-4">
           <button
@@ -619,7 +736,7 @@ const SpeakingMock = () => {
               color: frenchWhite,
               padding: "0.5rem 1rem",
               fontSize: "1rem",
-              borderRadius: "0.3rem",
+              borderRadius: "0.3rem"
             }}
             onClick={handleFinishTest}
           >
@@ -628,6 +745,7 @@ const SpeakingMock = () => {
         </div>
       )}
   
+      {/* Final Results */}
       {finalScore !== null && (
         <div className="container my-5">
           <h2 className="text-center mb-4" style={{ color: frenchBlue }}>
@@ -643,7 +761,12 @@ const SpeakingMock = () => {
           <div className="text-center mt-4">
             <button
               className="btn"
-              style={{ backgroundColor: frenchBlue, color: frenchWhite }}
+              style={{
+                backgroundColor: frenchBlue,
+                color: frenchWhite,
+                padding: "0.5rem 1rem",
+                borderRadius: "0.25rem"
+              }}
               onClick={() => window.location.reload()}
             >
               Restart Test
@@ -655,12 +778,8 @@ const SpeakingMock = () => {
       <audio ref={audioRef} style={{ display: "none" }} />
     </div>
   );
+
 };
 
 export default SpeakingMock;
-
-// TODO rachna Scoring: Extract score to a variable
-// When test is over, disable speaking
-// test scoring (1/10)
-// Replay, pause button, check if speed can be configured
 

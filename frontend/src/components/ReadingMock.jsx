@@ -9,6 +9,8 @@ const ReadingMock = () => {
   const frenchRed = "#EF4135";
   const frenchWhite = "#FFFFFF";
 
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+
   const { user } = useAuth();
   const [allExams, setAllExams] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
@@ -29,11 +31,11 @@ const ReadingMock = () => {
   const getExamImage = (level) => {
     switch (level) {
       case "Beginner":
-        return "https://www.tesl-lugano.ch/wp-content/uploads/2023/10/francese-cover-ragazzi.jpg";
+        return "images/reading1.png";
       case "Intermediate":
-        return "https://i.ytimg.com/vi/VPa1E3ye8k0/hq720.jpg?sqp=-oaymwEXCK4FEIIDSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLC0kFW2b7AhmIEj-vNaJRYvtE6xCw";
+        return "images/reading2.png";
       case "Advanced":
-        return "https://thumbs.dreamstime.com/b/paris-france-nov-person-reading-french-newspaper-la-croix-cozy-living-room-front-page-headline-revanche-covering-donald-344226829.jpg";
+        return "images/reading3.png";
       default:
         return "https://www.globaltimes.cn/Portals/0/attachment/2022/2022-09-16/913af628-a364-4f82-8bc3-2bfc27f19699.jpeg";
     }
@@ -113,7 +115,7 @@ const ReadingMock = () => {
         }
       `;
       try {
-        const response = await fetch("http://localhost:4000/graphql", {
+        const response = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
@@ -240,7 +242,7 @@ const ReadingMock = () => {
   };
 
   try {
-    const response = await fetch("http://localhost:4000/graphql", {
+    const response = await fetch(GRAPHQL_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: mutation, variables }),
@@ -300,7 +302,10 @@ const ReadingMock = () => {
                   src={getExamImage(exam.level)}
                   className="card-img-top"
                   alt={`${exam.level} Exam`}
-                  style={{ height: "200px", objectFit: "cover" }}
+                  style={{ width: '100%',
+                    height: 'auto',
+                    maxHeight: '400px',
+                    objectFit: 'contain' }}
                 />
                 <div className="card-body">
                   <h4 className="card-title">{exam.title}</h4>

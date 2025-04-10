@@ -21,11 +21,14 @@ const ListeningMock = () => {
   const [audioReady, setAudioReady] = useState(false); // audio is loaded and started
   const audioRef = useRef(null);
 
+  const GRAPHQL_ENDPOINT = `${process.env.REACT_APP_API_URL || "http://localhost:4000"}/graphql`;
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:4000";
+  
   // Fetch exam list from GraphQL
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        const res = await fetch("http://localhost:4000/graphql", {
+        const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -81,7 +84,7 @@ const ListeningMock = () => {
     setAudioError("");
     setAudioReady(false); // reset audioReady when fetching new passage
     try {
-      const response = await fetch("http://localhost:4000/api/mock-listening-question", {
+      const response = await fetch(`${API_ENDPOINT}/api/mock-listening-question`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -11,13 +11,16 @@ type Mutation {
   acceptWritingMatch(matchId: ID!, opponentId: ID!): WritingMatch
   submitWritingMatchAnswer(input: SubmitWritingMatchAnswerInput!): WritingMatch
   finalizeWritingMatch(matchId: ID!): WritingMatch
-  updateUser(id: ID!, input: UserUpdateInput!, profileImage: Upload): User
+  updateUser(id: ID!, input: UserUpdateInput!, profileImageUrl: String): User
   createDonation(input: DonationInput!): Donation!
 
   createImageMatch(input: CreateImageMatchInput!): ImageMatch
   acceptImageMatch(matchId: ID!, opponentId: ID!): ImageMatch
   submitImageAnswer(input: SubmitImageAnswerInput!): ImageMatch
-  finalizeImageMatch(matchId: ID!): ImageMatch
+  finishImageMatch(matchId: ID!): ImageMatch
+
+  verifyTutor(userId: ID!): User
+
 }
 
 input UserInput {
@@ -25,6 +28,7 @@ input UserInput {
   email: String!
   password: String!
   languageLevel: String
+  userType: String
 }
 
 input UserUpdateInput {
@@ -41,6 +45,7 @@ type User {
   languageLevel: String
   profileImage: String
   progress: Progress!
+  userType: String
   createdAt: String!
 }
 
@@ -149,7 +154,13 @@ type WritingMatch {
   initiatorFeedback: String
   opponentFeedback: String
   status: String!   # "pending", "active", "completed"
+  totalScore: WritingMatchScore  
   createdAt: String!
+}
+
+type WritingMatchScore {
+  initiator: Float
+  opponent: Float
 }
 
 input CreateWritingMatchInput {
@@ -246,7 +257,6 @@ type ImageMatch {
   examTitle: String!
   initiatorCurrent: Int!
   opponentCurrent: Int!
-  questions: [ImageMatchQuestion!]!
   initiator: User!
   opponent: User!
   status: String!
@@ -280,6 +290,7 @@ input SubmitImageAnswerInput {
   userId: ID!
   questionIndex: Int!
   answer: String!
+  isPass: Boolean
 }
 # Image Exam end
 
@@ -298,4 +309,6 @@ type Query {
   pendingImageMatches(userId: ID!): [ImageMatch!]!
   imageMatch(matchId: ID!): ImageMatch
   userImageMatches(userId: ID!): [ImageMatch!]!
+  userWritingMatches(userId: ID!): [WritingMatch!]!
+  pendingTutors: [User]
 }

@@ -11,9 +11,10 @@ const {Together} =  require("together-ai");
 const multer = require("multer");
 const hfApi = process.env.HF_API;
 const TCFSpeaking = require("./models/TCFSpeaking");
-const graphqlUploadExpress = require('graphql-upload').graphqlUploadExpress;
+//const graphqlUploadExpress = require('graphql-upload').graphqlUploadExpress;
 const PDFDocument = require("pdfkit");
 const Donation = require("./models/Donation");
+const ImgurClient = require("imgur").default;
 const { ApiError, CheckoutPaymentIntent, Client: PPClient, Environment, LogLevel, OrdersController } = require("@paypal/paypal-server-sdk");
 
 const together = new Together();
@@ -21,16 +22,54 @@ const together = new Together();
 // Initialize Express app
 const app = express();
 
-// Add the graphql-upload middleware
-app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+// Configure Multer for file uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middleware to parse JSON bodies
 app.use(express.json());
 app.use(cors({}));
 
-// Configure Multer for file uploads
-const upload = multer({ storage: multer.memoryStorage() });
+// Create an instance of the Imgur client.
+const imgurClient = new ImgurClient({
+  clientId: process.env.IMGUR_CLIENT_ID
+});
+
+// Add the graphql-upload middleware
+//app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+app.post("/api/upload-image", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    
+    // Upload to Imgur
+    const imageUrl = await uploadFileToImgur(req.file);
+    console.log("Image uploaded to Imgur:", imageUrl);
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error("Image upload error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to handle Imgur uploads
+const uploadFileToImgur = async (file) => {
+  try {
+    const base64Image = file.buffer.toString("base64");
+    const response = await imgurClient.upload({
+      image: base64Image,
+      type: 'base64',
+    });
+    return response.data.link;
+  } catch (error) {
+    console.error("Imgur upload error:", error);
+    throw new Error("Image upload failed");
+  }
+};
+
+
+
 
 // Configure Gradio Client
 let Client;
@@ -43,6 +82,14 @@ async function loadGradioClient() {
 
 // Retrieve PayPal credentials from env
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
+
+// Remove "/prod" from the URL if present (workaround)
+app.use((req, res, next) => {
+  if (req.url.startsWith('/prod')) {
+    req.url = req.url.slice(5); // Remove the first 5 characters, i.e. "/prod"
+  }
+  next();
+});
 
 // Route for generating feedback #20Feb2024
 app.post("/generate-feedback", async (req, res) => {
@@ -237,6 +284,120 @@ Fournissez un retour concis en deux lignes maximum, sans mentionner que la répo
     res.status(500).json({ error: "Failed to generate AI speech." });
   }
 });
+
+/**
+ * Endpoint: /api/calculate-speaking-score
+ * Expects { userResponses, topic, aiResponses } in the request body.
+ * Constructs a prompt for the AI model to rate the provided user responses based on grammar and content.
+ * The AI is instructed to return only a number (score) between 0 and 10.
+ * The endpoint extracts the score from the AI response and returns it.
+ */
+app.post("/api/calculate-speaking-score", async (req, res) => {
+  try {
+    const { userResponses, topic, aiResponses } = req.body;
+    if (!userResponses) {
+      return res.status(400).json({ error: "userResponses are required." });
+    }
+    
+    // Convert userResponses into a string format
+    let responsesString = "";
+    Object.entries(userResponses).forEach(([key, value]) => {
+      responsesString += `Response ${key}: ${value}\n`;
+    });
+
+    // Build the prompt instructing the AI to rate the responses
+    const ratingPrompt = `Vous êtes un examinateur de français. Évaluez les réponses du candidat en tenant compte de leur grammaire, de leur contenu, du sujet, ainsi que des retours fournis (feedback : ${aiResponses} - prendre seulment la partie après "role":"ai","text"). Si les retours indiquent une performance faible, ajustez la note en conséquence. Veuillez répondre uniquement par un nombre entre 0 et 10, sans explication. Par exemple, si vous estimez que la performance est de 5/10, répondez simplement "5".\n\nSujet : ${topic || "N/A"}\n${responsesString}`;
+
+    // Call the Together AI model with the prompt
+    const response = await together.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: ratingPrompt
+        }
+      ],
+      model: "meta-llama/Llama-Vision-Free",
+      max_tokens: 100,
+      temperature: 0.7,
+      top_p: 0.7,
+      top_k: 50,
+      repetition_penalty: 1,
+      stream: true
+    });
+    
+    // Accumulate the response tokens into a string
+    let ratingText = "";
+    for await (const token of response) {
+      ratingText += token.choices[0]?.delta?.content;
+    }
+    
+    // Use a regex to extract a number (score) from the response
+    const match = ratingText.match(/(\d+(\.\d+)?)/);
+    if (!match) {
+      return res.status(500).json({ error: "Could not extract score from AI response." });
+    }
+    const score = parseFloat(match[1]);
+    res.json({ score });
+  } catch (error) {
+    console.error("Error calculating speaking score:", error);
+    res.status(500).json({ error: "Failed to calculate speaking score." });
+  }
+});
+
+/**
+ * Endpoint: /api/generate-speaking-final-feedback
+ * Expects { userResponses, topic, aiResponses } in the request body.
+ * Constructs a prompt for the AI model to rate the provided user responses based on grammar and content.
+ * The AI is instructed to return only a feedback.
+ */
+app.post("/api/generate-speaking-final-feedback", async (req, res) => {
+  try {
+    const { userResponses, topic, aiResponses } = req.body;
+    if (!userResponses) {
+      return res.status(400).json({ error: "userResponses are required." });
+    }
+    
+    // Convert userResponses into a string format
+    let responsesString = "";
+    Object.entries(userResponses).forEach(([key, value]) => {
+      responsesString += `Response ${key}: ${value}\n`;
+    });
+
+    // Build the prompt instructing the AI to generate detailed final feedback
+    const ratingPrompt = `Vous êtes un examinateur de français. Évaluez les réponses du candidat en tenant compte de leur grammaire, de leur contenu, du sujet, ainsi que des retours fournis (feedback : ${aiResponses} - prendre seulment la partie après "role":"ai","text"). En vous basant sur ces éléments, donnez un retour final détaillé et constructif pour aider le candidat à s'améliorer. Veuillez répondre uniquement par un retour pour le candidat.\n\nSujet : ${topic || "N/A"}\n${responsesString}`;
+
+    // Call the Together AI model with the prompt
+    const response = await together.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: ratingPrompt
+        }
+      ],
+      model: "meta-llama/Llama-Vision-Free",
+      max_tokens: 200, // Increased tokens if necessary for detailed feedback
+      temperature: 0.7,
+      top_p: 0.7,
+      top_k: 50,
+      repetition_penalty: 1,
+      stream: true
+    });
+    
+    // Accumulate the response tokens into a string
+    let feedbackText = "";
+    for await (const token of response) {
+      feedbackText += token.choices[0]?.delta?.content;
+    }
+    
+    console.log("feedback: " + feedbackText);
+    // Return the complete feedback text
+    res.json({ feedback: feedbackText });
+  } catch (error) {
+    console.error("Error generating final feedback:", error);
+    res.status(500).json({ error: "Failed to generate final feedback." });
+  }
+});
+
 
 /**
  Endpoint: /api/listening-question
@@ -467,15 +628,25 @@ app.get("/api/invoice/:donationId", async (req, res) => {
     doc.pipe(res);
 
     // 1) Company Info + Logo
-    const logoPath = path.join(__dirname, "../frontend/public/Logo.png");
-    doc
-      .image(logoPath, 50, 45, { width: 70 })
-      .fontSize(16)
-      .text("FrenchifyMe Team", 130, 50)
-      .fontSize(10)
-      .text("200 University Ave W\nWaterloo, Ontario N2L 3G1", 130, 70)
-      .moveDown();
+    // Load logo image from URL using arrayBuffer
+    let logoBuffer;
+    try {
+      const logoResponse = await fetch("https://frenchify-me-6yik.vercel.app/Logo.png");
+      logoBuffer = Buffer.from(await logoResponse.arrayBuffer());
+    } catch (err) {
+      console.error("Logo loading error:", err);
+    }
 
+    if (logoBuffer) {
+      doc.image(logoBuffer, 50, 45, { width: 90 });
+    }
+    doc
+      .fontSize(16)
+      .text("Frenchify Team", 150, 60)
+      .fontSize(10)
+      .text("200 University Ave W\nWaterloo, Ontario N2L 3G1", 150, 80)
+      .moveDown();
+      
     // 2) "DONATION INVOICE" in French Blue
     doc
       .moveDown()
@@ -508,15 +679,45 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       .text(`Invoice date: ${new Date(donation.createdAt).toLocaleDateString()}`, 380, doc.y + 15)
       .moveDown();
 
-    // 4) Table Headers
-    doc.moveDown(1);
+    // 4) Donor details to the left
+    //doc.moveDown(2); // Move down a bit from the invoice date
+    const donorInfoX = 50; // Same as x-position for company logo
+    let donorInfoY = doc.y; // Capture the current y position
+
+    // Donor details heading
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .fillColor("black")
+      .text("Donor Information", donorInfoX, donorInfoY);
+
+    // Switch back to a normal font style
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor("black")
+      .moveDown(0.5);
+
+    donorInfoY = doc.y;
+
+    // Display each donor field
+    doc.text(`${donation.fullName}`, donorInfoX, donorInfoY);
+    doc.text(`${donation.street}`, donorInfoX);
+    doc.text(`${donation.city}, ${donation.state}`, donorInfoX);
+    doc.text(`${donation.postalCode}`, donorInfoX);
+    doc.text(`${donation.country}`, donorInfoX);
+    doc.moveDown(0.5);
+    doc.text(`Donor email: ${donation.email}`, donorInfoX);
+
+    // 5) Table Headers
+    doc.moveDown(3);
     let tableTop = doc.y;
     const tableLeft = 50;
 
     // Optionally color the headers in French Blue:
     doc.fontSize(10).fillColor(frenchBlue).text("QTY", tableLeft, tableTop);
     doc.text("Description", tableLeft + 50, tableTop);
-    doc.text("Unit Price", tableLeft + 250, tableTop, { width: 90, align: "right" });
+    doc.text("Currency", tableLeft + 250, tableTop, { width: 90, align: "right" });
     doc.text("Amount", tableLeft + 350, tableTop, { width: 90, align: "right" });
 
     // Horizontal line below headers
@@ -525,20 +726,20 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       .lineTo(550, tableTop + 15)
       .stroke();
 
-    // 5) Table Row(s) in black
+    // 6) Table Row(s) in black
     const rowY = tableTop + 30;
     doc.fontSize(10).fillColor("black").text("1", tableLeft, rowY); // QTY
     doc.text("Monetary Donation", tableLeft + 50, rowY); // Description
-    doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 250, rowY, {
+    doc.text(`USD`, tableLeft + 250, rowY, {
       width: 90,
       align: "right",
-    });
+    }); // Currency
     doc.text(`$${donation.amount.toFixed(2)}`, tableLeft + 350, rowY, {
       width: 90,
       align: "right",
-    });
+    }); // Amount donated
 
-    // 6) Subtotal, Total
+    // 7) Subtotal, Total
     const subtotalY = rowY + 30;
     doc.fillColor(fadedFrenchRed).text("Subtotal", tableLeft + 250, subtotalY, {
       width: 90,
@@ -549,8 +750,8 @@ app.get("/api/invoice/:donationId", async (req, res) => {
       align: "right",
     });
     
-    const totalY = subtotalY + 15;
-    const total = donation.amount; // Total equals donation amount since tax is removed
+    const totalY = subtotalY + 20;
+    const total = donation.amount; // Total equals donation amount since no tax
     doc.fillColor("black").text("Total (USD)", tableLeft + 250, totalY, {
       width: 90,
       align: "right",
@@ -563,20 +764,49 @@ app.get("/api/invoice/:donationId", async (req, res) => {
     // Extra space before the thank you note
     doc.moveDown(2);
 
-    // 7) Thank you note
+    // 8) Thank you note
     doc
       .fontSize(10)
       .fillColor("gray")
       .text("Thank you for your donation!", { align: "center" })
       .moveDown(1);
 
-    // 8) End the PDF
+    // 9) Footer
+    const footerY = doc.page.height - 60;
+    const lineY = footerY - 10;
+    const leftMargin = 50;
+    const rightMargin = doc.page.width - 50;
+
+    // Draw a red line above the footer text
+    doc
+      .strokeColor("red")
+      .lineWidth(1)
+      .moveTo(leftMargin, lineY)
+      .lineTo(rightMargin, lineY)
+      .stroke();
+
+    // Footer text in two parts (partially hyperlinked):
+    doc
+      .fontSize(8)
+      .fillColor("gray")
+      .text("Frenchify Team - ", leftMargin, footerY, {
+        continued: true // stay on the same line
+      })
+      .fillColor("blue")
+      .text("Visit our website", {
+        link: "https://frenchify-me-6yik.vercel.app/",
+        underline: true,
+        continued: false
+      });
+
+    // 10) End the PDF
     doc.end();
   } catch (error) {
     console.error("Error generating invoice PDF:", error);
     res.status(500).json({ error: "Failed to generate invoice PDF." });
   }
 });
+
 
 // Load and merge GraphQL schema files
 const typesArray = loadFilesSync(path.join(__dirname, "./schema"), {
@@ -594,29 +824,26 @@ async function startServer() {
   await server.start();
   server.applyMiddleware({ app, path: "/graphql" });
 
-  const PORT = process.env.PORT || 4000;
-
-  let isConnected;
-  async function connectToDatabase() {
-    if (isConnected) return;
-    try {
-      const db = await mongoose.connect(process.env.MONGO_URI, {
-        useUnifiedTopology: true,
-        useNewUrlParser: true,
-        serverSelectionTimeoutMS: 5000 // Timeout after 5 seconds if connection fails
-      });
-      isConnected = db.connections[0].readyState;
-      console.log("Connected to MongoDB successfully!");
-    } catch (err) {
-      console.error("Error connecting to MongoDB:", err);
-      throw err;
-    }
+  // Check if already connected before attempting to connect
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 16000
+    });
+    console.log("Connected to MongoDB successfully!");
+  } else {
+    console.log("MongoDB already connected.");
   }
-  await connectToDatabase();
 
-  app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/graphql`);
-  });
+  // For local development: start listening if not running on Lambda
+  if (!process.env.LAMBDA_TASK_ROOT) {
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}/graphql`);
+    });
+  }
 }
 
 startServer().catch((err) => console.log(err));
+
+// Export the app for Lambda usage
+module.exports = app;

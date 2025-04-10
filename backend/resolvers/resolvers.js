@@ -20,10 +20,19 @@ const { ImgurClient } = require('imgur');
 require("dotenv").config();
 const together = new Together();
 
-const Redis = require("ioredis");
-const redis = new Redis();
+// const Redis = require("ioredis");
+
+// const isElastiCacheRedis = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+// const redis = isElastiCacheRedis
+//   ? new Redis({
+//       host: process.env.AWS_ELASTICACHE_REDIS,
+//       port: 6379,
+//       tls: {} // Required - encryption in transit is enabled in ElastiCache
+//     })
+//   : new Redis();
 
 const PW_MUT_SECRET_KEY = process.env.PW_MUT_SECRET_KEY;
+
 
 // Create an instance of the Imgur client.
 const imgurClient = new ImgurClient({
@@ -112,7 +121,6 @@ async function generateFeedback(question, answer) {
   return feedback.replace(/\n/g, "<br>");
 }
 
-// Vipul 
 const resolvers = {
   Query: {
     // Fetch all users
@@ -165,6 +173,7 @@ const resolvers = {
     
     // New: Fetch test history (scores) for a given user
     testHistories: async (_, { userId }) => {
+      console.log("Fetching test histories for userId:", userId);
       try {
         return await History.find({ userId });
       } catch (error) {
@@ -257,44 +266,67 @@ const resolvers = {
       return await ImageMatch.find({
         $or: [{ initiator: userId }, { opponent: userId }],
         status: { $in: ["pending", "active"] }
-      }).populate("initiator", "username")
-      .populate("opponent", "username");;
+      })
+        .populate("initiator", "username")
+        .populate("opponent", "username");
     },
     imageMatch: async (_, { matchId }) => {
-      return await ImageMatch.findById(matchId).populate("initiator", "username")
-      .populate("opponent", "username");;
+      return await ImageMatch.findById(matchId)
+        .populate("initiator", "username")
+        .populate("opponent", "username");
     },
     userImageMatches: async (_, { userId }) => {
       return await ImageMatch.find({
         $or: [{ initiator: userId }, { opponent: userId }],
         status: "completed"
       })
-      .sort({ createdAt: -1 })
-      .populate("initiator", "username")
-      .populate("opponent", "username");
+        .sort({ createdAt: -1 })
+        .populate("initiator", "username")
+        .populate("opponent", "username");
+    },
+    userWritingMatches: async (_, { userId }) => {
+      console.log("Fetching completed writing matches for userId:", userId);
+      return await WritingMatch.find({
+        $or: [{ initiator: userId }, { opponent: userId }],
+        status: 'completed'
+      }).populate('initiator opponent');
+    },
+    pendingTutors: async () => {
+      try {
+        return await User.find({ userType: "pendingTutor" });
+      } catch (error) {
+        console.error("Error fetching pending tutors:", error);
+        throw new Error("Failed to fetch pending tutors");
+      }
     },
   },
 
   Mutation: {
     // Login
     login: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user || !(await bcrypt.compare(password, user.password))) {
-        throw new Error("Invalid email or password");
+      try {
+        const user = await User.findOne({ email });
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+          throw new Error("Invalid email or password");
+        }
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          languageLevel: user.languageLevel,
+          profileImage: user.profileImage,
+          userType: user.userType,
+        };
+      } catch (error) {
+        console.error("Detailed error logging in user:", error.message);
+        throw new Error("Failed to login.");
       }
-      return {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        languageLevel: user.languageLevel,
-        profileImage: user.profileImage,
-      };
     },
 
     // Create user
     createUser: async (_, { input }) => {
       try {
-        // Hash the password before saving
+        // Hash the password
         const hashedPassword = await bcrypt.hash(input.password, 10);
         const newUser = new User({
           ...input,
@@ -305,6 +337,22 @@ const resolvers = {
       } catch (error) {
         console.error("Detailed error creating user:", error.message);
         throw new Error("Failed to create user");
+      }
+    },
+
+    //verify a pending tutor (admin action)
+    verifyTutor: async (_, { userId }) => {
+      try {
+        const user = await User.findById(userId); // Find the user by ID
+        if (!user) throw new Error("User not found"); // Check if user exists
+        if (user.userType !== "pendingTutor") 
+          throw new Error("User is not pending verification"); // Check if user is pending verification
+        user.userType = "trainer"; // Change user type to trainer
+        await user.save(); // Save the updated user
+        return user;
+      } catch (error) {
+        console.error("Error verifying tutor:", error);
+        throw new Error("Failed to verify tutor");
       }
     },
 
@@ -353,7 +401,7 @@ const resolvers = {
                   style="width: 100px; height: auto;">
             </div>
           `
-        };
+        }; // TODO rp: change localhost:3000 for prod (use .env for prod+local)
     
         const info = await transporter.sendMail(mailOptions);
         console.log("Email sent:", info.response);
@@ -368,10 +416,10 @@ const resolvers = {
     resetPassword: async (_, { token, newPassword }) => {
       try {
         // Check if token is already blacklisted
-        const isBlacklisted = await redis.get(`blacklisted:${token}`);
-        if (isBlacklisted) {
-          throw new Error("Token has already been used.");
-        }
+        // const isBlacklisted = await redis.get(`blacklisted:${token}`);
+        // if (isBlacklisted) {
+        //   throw new Error("Token has already been used.");
+        // }
         // Verify token
         const decoded = jwt.verify(token, PW_MUT_SECRET_KEY);
         const user = await User.findOne({ email: decoded.email });
@@ -386,7 +434,7 @@ const resolvers = {
         await user.save();
 
         // Blacklist the token in Redis - to prevent a 2nd password change
-        await redis.set(`blacklisted:${token}`, "true", "EX", 3600); // Expires after 1 hour
+        // await redis.set(`blacklisted:${token}`, "true", "EX", 3600); // Expires after 1 hour
 
         return "Password successfully reset.";
       } catch (error) {
@@ -501,69 +549,59 @@ const resolvers = {
 
     // Finalize the match after both users have submitted
     finalizeWritingMatch: async (_, { matchId }) => {
+      const extractScoreFromFeedback = (feedback) => {
+        const scoreMatch = feedback.match(/(?:Score:|score:)\s*([0-9.]+)\/10/i);
+        return scoreMatch ? parseFloat(scoreMatch[1]) : 0;
+      };
+    
       const match = await WritingMatch.findById(matchId);
-      if (!match) {
-        throw new Error("Match not found");
-      }
+      if (!match) throw new Error("Match not found");
       if (!match.initiatorAnswer || !match.opponentAnswer) {
-        throw new Error("Both users must submit an answer before finalizing");
+        throw new Error("Both users must submit answers before finalizing");
       }
-      // Generate feedback for each answer
+    
+      // Generate feedback and extract scores
       const [initiatorFeedback, opponentFeedback] = await Promise.all([
         generateFeedback(match.examQuestion, match.initiatorAnswer),
-        generateFeedback(match.examQuestion, match.opponentAnswer)
+        generateFeedback(match.examQuestion, match.opponentAnswer),
       ]);
+    
+      // Extract scores from feedback
+      const initiatorScore = extractScoreFromFeedback(initiatorFeedback);
+      const opponentScore = extractScoreFromFeedback(opponentFeedback);
+    
+      // Update match with feedback and scores
       match.initiatorFeedback = initiatorFeedback;
       match.opponentFeedback = opponentFeedback;
+      match.totalScore = {
+        initiator: initiatorScore,
+        opponent: opponentScore
+      };
       match.status = "completed";
       await match.save();
-      
-      // Re-query the match with populated user fields
+    
+      // Return populated match
       const populatedMatch = await WritingMatch.findById(matchId)
         .populate("initiator", "username")
         .populate("opponent", "username");
-      
-      // Normalize the document: convert ObjectIds to strings
-      const matchObj = populatedMatch.toObject();
-      matchObj.id = matchObj._id.toString();
-      matchObj.examId = matchObj.examId.toString();
-      matchObj.initiator = {
-        id: matchObj.initiator._id.toString(),
-        username: matchObj.initiator.username,
-      };
-      matchObj.opponent = {
-        id: matchObj.opponent._id.toString(),
-        username: matchObj.opponent.username,
-      };
-      delete matchObj._id;
-      delete matchObj.__v;
-      console.log("Finalized match:", matchObj);
-      
-      return matchObj;
+    
+      return populatedMatch.toObject({ virtuals: true });
     },
 
     createImageMatch: async (_, { input }) => {
-      console.log("Creating image match with input:", input);
       const exam = await ImageExam.findById(input.examId);
       if (!exam) throw new Error("Exam not found");
       const opponent = await User.findOne({ username: input.opponentUsername });
       if (!opponent) throw new Error("Opponent not found");
-      console.log("Creating image match with opponent:", opponent.username);
     
       const newMatch = new ImageMatch({
         initiator: input.initiatorId,
         examId: input.examId,
         examTitle: exam.title,
-        //currentQuestion: 0,
         initiatorCurrent: 0,
         opponentCurrent: 0,
-        questions: exam.questions.map(q => ({
-          imageUrl: q.imageUrl,
-          correctWord: q.correctWord,
-          revealedLetters: q.revealedLetters
-        })),
         opponent: opponent._id,
-        status: "pending", 
+        status: "pending",
         totalScore: { initiator: 0, opponent: 0 }
       });
       
@@ -590,42 +628,47 @@ const resolvers = {
       const match = await ImageMatch.findById(input.matchId)
         .populate("initiator", "username")
         .populate("opponent", "username");
-    
       if (!match) throw new Error("Match not found");
-      
-      const isInitiator = match.initiator._id.equals(input.userId);
-      const currentUserField = isInitiator ? 'initiatorCurrent' : 'opponentCurrent';
-      const currentQuestionIndex = match[currentUserField];
     
-      // Validate question index
-      if (input.questionIndex !== currentQuestionIndex) {
-        throw new Error("Invalid question submission");
+      // Check time limit – if exceeded, finish match.
+      const timeElapsed = Date.now() - new Date(match.createdAt).getTime();
+      if (timeElapsed >= 5 * 60 * 1000 && match.status !== "completed") {
+        match.status = "completed";
+        await match.save();
+        return match;
       }
     
-      const question = match.questions[currentQuestionIndex];
-      const correct = question.correctWord.toLowerCase() === input.answer.toLowerCase();
-      const score = correct ? 10 : 0;
+      const isInitiator = match.initiator._id.equals(input.userId);
+      const currentUserField = isInitiator ? "initiatorCurrent" : "opponentCurrent";
+      const currentQuestionIndex = match[currentUserField];
     
-      // Update answers and scores
+      const exam = await ImageExam.findById(match.examId);
+      if (!exam) throw new Error("Exam not found for this match");
+      if (currentQuestionIndex >= exam.questions.length) {
+        throw new Error("No more questions left");
+      }
+    
+      const question = exam.questions[currentQuestionIndex];
+      // Compare after trimming and converting to lowercase.
+      const submittedAnswer = input.answer.trim().toLowerCase();
+      const correctWord = question.correctWord.trim().toLowerCase();
+      const correct = submittedAnswer === correctWord;
+      console.log("Answer correctness:", correctWord, submittedAnswer, correct);
+    
+      // If isPass is explicitly true then score is 0; otherwise, award 10 if correct.
+      const score = input.isPass === true ? 0 : (correct ? 10 : 0);
+      console.log("Is pass:", input.isPass); // Verify this logs 'true' when Pass is used
+    
       if (isInitiator) {
-        question.initiatorAnswer = input.answer;
-        question.initiatorScore = score;
         match.totalScore.initiator += score;
       } else {
-        question.opponentAnswer = input.answer;
-        question.opponentScore = score;
         match.totalScore.opponent += score;
       }
     
-      // Move only the submitting user to next question
+      // Increment the current question index.
       match[currentUserField] += 1;
     
-      // Check if both players have completed all questions
-      const bothCompleted = 
-        match.initiatorCurrent >= match.questions.length &&
-        match.opponentCurrent >= match.questions.length;
-    
-      if (bothCompleted) {
+      if (match.initiatorCurrent >= exam.questions.length && match.opponentCurrent >= exam.questions.length) {
         match.status = "completed";
       }
     
@@ -633,27 +676,40 @@ const resolvers = {
       return match;
     },
     
-    updateUser: async (_, { id, input, profileImage }) => {
-      try {
-        const user = await User.findById(id);
-        if (!user) throw new Error("User not found");
     
-        // Update language level
-        if (input.languageLevel) user.languageLevel = input.languageLevel;
-    
-        // Handle file upload
-        if (profileImage) {
-          console.log("Raw profileImage input:", profileImage);
-          user.profileImage = await uploadFileToImgur(profileImage);
-        }
-    
-        await user.save();
-        return user;
-      } catch (error) {
-        console.error("Update error:", error);
-        throw new Error(`Profile update failed: ${error.message}`);
-      }
+
+    finishImageMatch: async (_, { matchId }) => {
+      const match = await ImageMatch.findById(matchId)
+        .populate("initiator", "username")
+        .populate("opponent", "username");
+      if (!match) throw new Error("Match not found");
+      
+      match.status = "completed";
+      await match.save();
+      return match;
     },
+    
+    
+
+      updateUser: async (_, { id, input, profileImageUrl }) => {
+        try {
+          const user = await User.findById(id);
+          if (!user) throw new Error("User not found");
+
+          if (profileImageUrl) {
+            user.profileImage = profileImageUrl;
+          }
+
+          if (input.languageLevel) {
+            user.languageLevel = input.languageLevel;
+          }
+          await user.save();
+          return user;
+        } catch (error) {
+          console.error("Update error:", error);
+          throw new Error(`Profile update failed: ${error.message}`);
+        }
+      },
 
     // Save donation details + generate invoice number
     createDonation: async (_, { input }) => {

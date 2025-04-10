@@ -291,6 +291,14 @@ const resolvers = {
         status: 'completed'
       }).populate('initiator opponent');
     },
+    pendingTutors: async () => {
+      try {
+        return await User.find({ userType: "pendingTutor" });
+      } catch (error) {
+        console.error("Error fetching pending tutors:", error);
+        throw new Error("Failed to fetch pending tutors");
+      }
+    },
   },
 
   Mutation: {
@@ -307,6 +315,7 @@ const resolvers = {
           email: user.email,
           languageLevel: user.languageLevel,
           profileImage: user.profileImage,
+          userType: user.userType,
         };
       } catch (error) {
         console.error("Detailed error logging in user:", error.message);
@@ -317,7 +326,7 @@ const resolvers = {
     // Create user
     createUser: async (_, { input }) => {
       try {
-        // Hash the password before saving
+        // Hash the password
         const hashedPassword = await bcrypt.hash(input.password, 10);
         const newUser = new User({
           ...input,
@@ -328,6 +337,22 @@ const resolvers = {
       } catch (error) {
         console.error("Detailed error creating user:", error.message);
         throw new Error("Failed to create user");
+      }
+    },
+
+    //verify a pending tutor (admin action)
+    verifyTutor: async (_, { userId }) => {
+      try {
+        const user = await User.findById(userId); // Find the user by ID
+        if (!user) throw new Error("User not found"); // Check if user exists
+        if (user.userType !== "pendingTutor") 
+          throw new Error("User is not pending verification"); // Check if user is pending verification
+        user.userType = "trainer"; // Change user type to trainer
+        await user.save(); // Save the updated user
+        return user;
+      } catch (error) {
+        console.error("Error verifying tutor:", error);
+        throw new Error("Failed to verify tutor");
       }
     },
 

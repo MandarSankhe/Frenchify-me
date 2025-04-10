@@ -7,8 +7,8 @@ const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
 
 // Set your Socket.IO server URL; adjust if needed
-const SOCKET_SERVER_URL = "http://localhost:8736"; // Adjust this to your server URL
-
+//const SOCKET_SERVER_URL = "http://localhost:8736" ; // Adjust this to your server URL
+const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com"
 const MeetingRoom = () => {
   const [stream, setStream] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);

@@ -19,6 +19,7 @@ const LOGIN_MUTATION = gql`
       email
       languageLevel
       profileImage
+      userType
     }
   }
 `;
@@ -85,6 +86,7 @@ const Login = () => {
       if (data?.login) {
         login(data.login); // Pass user data to the context
         const role = data.login.userType;
+        console.log("User role:", role); // Log the user role for debugging
         if (role === "admin") {
           navigate("/admin-home"); // Admin dashboard
         } else if (role === "trainer") {

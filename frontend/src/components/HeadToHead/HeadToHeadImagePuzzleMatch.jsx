@@ -5,8 +5,8 @@ import { useAuth } from "../../context/AuthContext";
 import io from "socket.io-client";
 import Chat from "./Chat";
 
-//const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
-const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
+const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
+//const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
 
 // GraphQL Queries & Mutations
 const GET_USERS = gql`

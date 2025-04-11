@@ -1,17 +1,12 @@
 // Chat.jsx
 import React, { useEffect, useState, useRef } from "react";
-import io from "socket.io-client";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { FaCommentDots, FaTimes, FaPaperPlane } from "react-icons/fa";
 
-// Use your API endpoint from the environment or default to localhost
-const API_ENDPOINT = "https://frenchify-me.onrender.com";
-//const API_ENDPOINT =  "http://localhost:8736";
-// Initialize socket instance (consider using a singleton for production)
-console.log("Connecting to socket at:", API_ENDPOINT);
-const socket = io(API_ENDPOINT);
 
-const Chat = ({ matchId, currentUser }) => {
+const Chat = ({ matchId, currentUser, socketRef  }) => {
+  console.log("Chat component mounted with matchId:", socketRef);
   // Colors and gradients
   const frenchBlue = "#0055A4";
   const frenchRed = "#EF4135";
@@ -34,24 +29,26 @@ const Chat = ({ matchId, currentUser }) => {
 
   // Handle incoming messages with current isOpen and currentUser.username in dependencies
   useEffect(() => {
+    if (!socketRef.current) return; // Wait if socket is not yet available
+  
     const handleIncomingMessage = (message) => {
       setMessages((prev) => [...prev, message]);
-      // If chat is closed and the message is not from the current user, increment unread count and play sound
       if (!isOpen && message.user !== currentUser.username) {
         setUnreadCount((prev) => prev + 1);
         playNotificationSound();
       }
     };
-
-    if (matchId) {
-      socket.emit("join room", matchId);
-    }
-    socket.on("chat message", handleIncomingMessage);
+  
+    socketRef.current.emit("join chat room", matchId);
+    socketRef.current.on("chat message", handleIncomingMessage);
+  
     return () => {
-      socket.off("chat message", handleIncomingMessage);
-      socket.emit("leave room", matchId);
+      if (socketRef.current) {
+        socketRef.current.off("chat message", handleIncomingMessage);
+        socketRef.current.emit("leave room", matchId);
+      }
     };
-  }, [matchId, isOpen, currentUser.username]);
+  }, [matchId, isOpen, currentUser.username, socketRef]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -66,7 +63,7 @@ const Chat = ({ matchId, currentUser }) => {
       time: new Date().toISOString(),
     };
     // Emit the message to the specific room
-    socket.emit("chat message", { room: matchId, message });
+    socketRef.current.emit("chat message", { room: matchId, message });
     // Do not update local state immediately—the message will be added via the server broadcast
     setInput("");
   };

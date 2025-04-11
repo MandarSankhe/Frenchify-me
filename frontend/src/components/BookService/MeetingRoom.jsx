@@ -2,6 +2,9 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import io from "socket.io-client";
 import SimplePeer from "simple-peer";
 import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from "react-icons/fa";
+import SharedWhiteboard from "./SharedWhiteboard"; // Import the new component
+import Chat from "../HeadToHead/Chat";
+import { useAuth } from "../../context/AuthContext";
 
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
@@ -9,10 +12,11 @@ const frenchWhite = "#FFFFFF";
 const darkGray = "#2E2E2E";
 
 // Set your Socket.IO server URL; adjust if needed
- const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
-//const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
+//const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
+const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
 
 const MeetingRoom = () => {
+  const { user } = useAuth();
   const [stream, setStream] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
   const [receivingCall, setReceivingCall] = useState(false);
@@ -188,6 +192,7 @@ const MeetingRoom = () => {
     return cleanup;
   }, [roomId]);
 
+  // Existing functions (callUser, answerCall, toggleScreenShare, etc.)
   // Handle calling another user
   const callUser = useCallback((userId) => {
     console.log("Initiating call to:", userId);
@@ -318,6 +323,9 @@ const MeetingRoom = () => {
         </div>
       )}
       
+      {/* Add the SharedWhiteboard component here */}
+      <SharedWhiteboard socketRef={socketRef} roomId={roomId} />
+      
       <div style={styles.videoContainer}>
         <div style={styles.videoWrapper}>
           <h4 style={styles.videoTitle}>
@@ -425,6 +433,7 @@ const MeetingRoom = () => {
         <p>Socket ID: {socketRef.current?.id || 'Connecting...'}</p>
         <p>Connection Status: {socketRef.current?.connected ? 'Connected' : 'Disconnected'}</p>
       </div>
+      <Chat matchId={roomId} currentUser={user} socketRef={socketRef} />
     </div>
   );
 };

@@ -5,9 +5,10 @@ import SimplePeer from "simple-peer";
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
+const darkGray = "#2E2E2E";
 
 // Set your Socket.IO server URL; adjust if needed
-const SOCKET_SERVER_URL = "http://localhost:8736";
+const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
 
 const MeetingRoom = () => {
   const [stream, setStream] = useState(null);
@@ -17,9 +18,11 @@ const MeetingRoom = () => {
   const [callerSignal, setCallerSignal] = useState(null);
   const [peer, setPeer] = useState(null);
   const [otherUser, setOtherUser] = useState(null); // ID of the other user in the room
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const localVideo = useRef();
   const remoteVideo = useRef();
+  const screenStreamRef = useRef(null); // to hold the display media stream
 
   // Get room id from the URL query parameter
   const params = new URLSearchParams(window.location.search);
@@ -122,67 +125,168 @@ const MeetingRoom = () => {
     setPeer(answererPeer);
   };
 
+  // Toggle screen sharing feature
+  const toggleScreenShare = async () => {
+    if (!isScreenSharing) {
+      try {
+        // Capture display media (screen share)
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+        });
+        screenStreamRef.current = displayStream;
+        setIsScreenSharing(true);
+
+        // Replace local video stream with screen share stream
+        if (localVideo.current) {
+          localVideo.current.srcObject = displayStream;
+        }
+        
+        // If there is an active peer connection, replace the video track
+        if (peer) {
+          const screenTrack = displayStream.getVideoTracks()[0];
+          const sender = peer._pc.getSenders().find(s => s.track && s.track.kind === "video");
+          if (sender) {
+            sender.replaceTrack(screenTrack);
+          }
+        }
+        
+        // When the user stops sharing manually, revert back to camera
+        displayStream.getVideoTracks()[0].onended = () => {
+          toggleScreenShare();
+        };
+
+      } catch (err) {
+        console.error("Error sharing the screen: ", err);
+      }
+    } else {
+      // Revert to original camera stream
+      if (localVideo.current) {
+        localVideo.current.srcObject = stream;
+      }
+      // If there is an active peer connection, replace the track with the original camera track
+      if (peer && stream) {
+        const cameraTrack = stream.getVideoTracks()[0];
+        const sender = peer._pc.getSenders().find(s => s.track && s.track.kind === "video");
+        if (sender) {
+          sender.replaceTrack(cameraTrack);
+        }
+      }
+      // Stop screen share stream if active
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      setIsScreenSharing(false);
+    }
+  };
+
   return (
-    <div className="container my-5">
-      <h2 style={{ color: frenchBlue }}>Meeting Room</h2>
-      <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap" }}>
-        <div>
-          <h4>Local Stream</h4>
+    <div style={styles.container}>
+      <header style={styles.header}>
+        <h1 style={styles.headerTitle}>Meeting Room</h1>
+      </header>
+      <div style={styles.videoContainer}>
+        <div style={styles.videoWrapper}>
+          <h4 style={styles.videoTitle}>Local Stream</h4>
           <video
             playsInline
             muted
             ref={localVideo}
             autoPlay
-            style={{ width: "300px", border: `2px solid ${frenchBlue}` }}
+            style={styles.video}
           />
         </div>
-        <div>
-          <h4>Remote Stream</h4>
+        <div style={styles.videoWrapper}>
+          <h4 style={styles.videoTitle}>Remote Stream</h4>
           <video
             playsInline
             ref={remoteVideo}
             autoPlay
-            style={{ width: "300px", border: `2px solid ${frenchBlue}` }}
+            style={styles.video}
           />
         </div>
       </div>
-      <div className="mt-3">
-        {/* Show "Call" button only if no call is active, no incoming call, and there's another user */}
+      <div style={styles.buttonBar}>
+        {/** Call button shows only if no call is active, no incoming call, and there's another user */}
         {!callAccepted && !receivingCall && otherUser && (
-          <button
-            onClick={callUser}
-            style={{
-              backgroundColor: frenchBlue,
-              color: frenchWhite,
-              padding: "10px 20px",
-              border: "none",
-              borderRadius: "5px",
-            }}
-          >
-            Call
-          </button>
+          <button style={styles.button} onClick={callUser}>Call</button>
         )}
         {receivingCall && !callAccepted && (
-          <div>
-            <h3 style={{ color: frenchBlue }}>Incoming Call...</h3>
-            <button
-              onClick={answerCall}
-              style={{
-                backgroundColor: frenchBlue,
-                color: frenchWhite,
-                padding: "10px 20px",
-                border: "none",
-                borderRadius: "5px",
-              }}
-            >
-              Answer
-            </button>
+          <div style={styles.incomingCall}>
+            <h3 style={styles.incomingText}>Incoming Call...</h3>
+            <button style={styles.button} onClick={answerCall}>Answer</button>
           </div>
         )}
-        {callAccepted && <p style={{ color: frenchBlue }}>Call in progress...</p>}
+        {callAccepted && <p style={styles.callStatus}>Call in progress...</p>}
+        {stream && (
+          <button style={styles.button} onClick={toggleScreenShare}>
+            {isScreenSharing ? "Stop Screen Share" : "Share Screen"}
+          </button>
+        )}
       </div>
     </div>
   );
+};
+
+const styles = {
+  container: {
+    background: darkGray,
+    color: frenchWhite,
+    minHeight: "100vh",
+    padding: "20px",
+    fontFamily: "Arial, sans-serif"
+  },
+  header: {
+    textAlign: "center",
+    padding: "10px 0",
+    borderBottom: `2px solid ${frenchBlue}`,
+    marginBottom: "20px"
+  },
+  headerTitle: {
+    margin: "0",
+    fontSize: "2rem"
+  },
+  videoContainer: {
+    display: "flex",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: "20px"
+  },
+  videoWrapper: {
+    textAlign: "center"
+  },
+  videoTitle: {
+    marginBottom: "10px"
+  },
+  video: {
+    width: "320px",
+    border: `4px solid ${frenchBlue}`,
+    borderRadius: "10px",
+    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.5)"
+  },
+  buttonBar: {
+    marginTop: "30px",
+    textAlign: "center"
+  },
+  button: {
+    backgroundColor: frenchBlue,
+    color: frenchWhite,
+    padding: "12px 24px",
+    border: "none",
+    borderRadius: "5px",
+    margin: "0 10px",
+    cursor: "pointer",
+    fontSize: "1rem"
+  },
+  incomingCall: {
+    marginBottom: "20px"
+  },
+  incomingText: {
+    margin: "10px 0"
+  },
+  callStatus: {
+    fontSize: "1.1rem",
+    marginTop: "10px"
+  }
 };
 
 export default MeetingRoom;

@@ -9,8 +9,8 @@ const frenchWhite = "#FFFFFF";
 const darkGray = "#2E2E2E";
 
 // Set your Socket.IO server URL; adjust if needed
-// const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
-const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
+ const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
+//const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
 
 const MeetingRoom = () => {
   const [stream, setStream] = useState(null);

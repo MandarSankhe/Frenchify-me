@@ -7,8 +7,8 @@ const frenchRed = "#EF4135";
 const frenchWhite = "#FFFFFF";
 
 // Set your Socket.IO server URL; adjust if needed
-//const SOCKET_SERVER_URL = "http://localhost:8736" ; // Adjust this to your server URL
-const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com"
+const SOCKET_SERVER_URL = "http://localhost:8736";
+
 const MeetingRoom = () => {
   const [stream, setStream] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
@@ -16,6 +16,8 @@ const MeetingRoom = () => {
   const [caller, setCaller] = useState("");
   const [callerSignal, setCallerSignal] = useState(null);
   const [peer, setPeer] = useState(null);
+  const [otherUser, setOtherUser] = useState(null); // ID of the other user in the room
+
   const localVideo = useRef();
   const remoteVideo = useRef();
 
@@ -26,11 +28,11 @@ const MeetingRoom = () => {
   const socketRef = useRef();
 
   useEffect(() => {
-    // Connect to the Socket.IO server
     socketRef.current = io(SOCKET_SERVER_URL);
 
     // Get local video/audio stream
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
       .then((stream) => {
         setStream(stream);
         if (localVideo.current) {
@@ -41,15 +43,27 @@ const MeetingRoom = () => {
       })
       .catch((err) => console.error("Failed to get stream", err));
 
+    // When joining a room, get the other users (if any)
+    socketRef.current.on("all users", (users) => {
+      if (users.length > 0) {
+        // Assume a one-to-one call; take the first user as the other peer
+        setOtherUser(users[0]);
+      }
+    });
+
+    // Listen for an incoming call from another user
     socketRef.current.on("callUser", (data) => {
       setReceivingCall(true);
       setCaller(data.from);
       setCallerSignal(data.signal);
     });
 
+    // When the caller receives an answer, complete the connection
     socketRef.current.on("callAccepted", (signal) => {
       setCallAccepted(true);
-      peer && peer.signal(signal);
+      if (peer) {
+        peer.signal(signal);
+      }
     });
 
     return () => {
@@ -58,41 +72,52 @@ const MeetingRoom = () => {
   }, [roomId, peer]);
 
   const callUser = () => {
+    // Create a SimplePeer as initiator
     const initiatorPeer = new SimplePeer({
       initiator: true,
       trickle: false,
       stream: stream,
     });
+
+    // When SimplePeer generates signaling data, send it to the other user (by socket ID)
     initiatorPeer.on("signal", (data) => {
       socketRef.current.emit("callUser", {
-        userToCall: roomId, // We use roomId as an identifier for the other peer in this simple example.
+        userToCall: otherUser,
         signalData: data,
         from: socketRef.current.id,
       });
     });
+
+    // When a stream is received, set it as the remote video stream
     initiatorPeer.on("stream", (currentStream) => {
       if (remoteVideo.current) {
         remoteVideo.current.srcObject = currentStream;
       }
     });
+
     setPeer(initiatorPeer);
   };
 
   const answerCall = () => {
     setCallAccepted(true);
+    // Create a SimplePeer as non-initiator to answer the incoming call
     const answererPeer = new SimplePeer({
       initiator: false,
       trickle: false,
       stream: stream,
     });
+    
     answererPeer.on("signal", (data) => {
       socketRef.current.emit("answerCall", { signal: data, to: caller });
     });
+
     answererPeer.on("stream", (currentStream) => {
       if (remoteVideo.current) {
         remoteVideo.current.srcObject = currentStream;
       }
     });
+    
+    // Signal the caller with the received callerSignal
     answererPeer.signal(callerSignal);
     setPeer(answererPeer);
   };
@@ -103,30 +128,58 @@ const MeetingRoom = () => {
       <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap" }}>
         <div>
           <h4>Local Stream</h4>
-          <video playsInline muted ref={localVideo} autoPlay style={{ width: "300px", border: `2px solid ${frenchBlue}` }} />
+          <video
+            playsInline
+            muted
+            ref={localVideo}
+            autoPlay
+            style={{ width: "300px", border: `2px solid ${frenchBlue}` }}
+          />
         </div>
         <div>
           <h4>Remote Stream</h4>
-          <video playsInline ref={remoteVideo} autoPlay style={{ width: "300px", border: `2px solid ${frenchBlue}` }} />
+          <video
+            playsInline
+            ref={remoteVideo}
+            autoPlay
+            style={{ width: "300px", border: `2px solid ${frenchBlue}` }}
+          />
         </div>
       </div>
       <div className="mt-3">
-        {!callAccepted && !receivingCall && (
-          <button onClick={callUser} style={{ backgroundColor: frenchBlue, color: frenchWhite, padding: "10px 20px", border: "none", borderRadius: "5px" }}>
+        {/* Show "Call" button only if no call is active, no incoming call, and there's another user */}
+        {!callAccepted && !receivingCall && otherUser && (
+          <button
+            onClick={callUser}
+            style={{
+              backgroundColor: frenchBlue,
+              color: frenchWhite,
+              padding: "10px 20px",
+              border: "none",
+              borderRadius: "5px",
+            }}
+          >
             Call
           </button>
         )}
         {receivingCall && !callAccepted && (
           <div>
             <h3 style={{ color: frenchBlue }}>Incoming Call...</h3>
-            <button onClick={answerCall} style={{ backgroundColor: frenchBlue, color: frenchWhite, padding: "10px 20px", border: "none", borderRadius: "5px" }}>
+            <button
+              onClick={answerCall}
+              style={{
+                backgroundColor: frenchBlue,
+                color: frenchWhite,
+                padding: "10px 20px",
+                border: "none",
+                borderRadius: "5px",
+              }}
+            >
               Answer
             </button>
           </div>
         )}
-        {callAccepted && (
-          <p style={{ color: frenchBlue }}>Call in progress...</p>
-        )}
+        {callAccepted && <p style={{ color: frenchBlue }}>Call in progress...</p>}
       </div>
     </div>
   );

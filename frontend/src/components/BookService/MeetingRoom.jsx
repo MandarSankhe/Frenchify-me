@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import io from "socket.io-client";
 import SimplePeer from "simple-peer";
 
@@ -16,165 +16,277 @@ const MeetingRoom = () => {
   const [receivingCall, setReceivingCall] = useState(false);
   const [caller, setCaller] = useState("");
   const [callerSignal, setCallerSignal] = useState(null);
-  const [peer, setPeer] = useState(null);
-  const [otherUser, setOtherUser] = useState(null); // ID of the other user in the room
+  const [otherUsers, setOtherUsers] = useState([]);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
 
   const localVideo = useRef();
   const remoteVideo = useRef();
-  const screenStreamRef = useRef(null); // to hold the display media stream
+  const screenStreamRef = useRef(null);
+  const peerRef = useRef(null);
+  const socketRef = useRef();
 
   // Get room id from the URL query parameter
   const params = new URLSearchParams(window.location.search);
   const roomId = params.get("room");
 
-  const socketRef = useRef();
+  // Function to create and initialize a peer connection
+  const createPeer = useCallback((initiator, targetUserId, stream) => {
+    console.log(`Creating peer connection: initiator=${initiator}, targetUser=${targetUserId}`);
+    
+    try {
+      const peer = new SimplePeer({
+        initiator,
+        trickle: false,
+        stream,
+      });
 
+      // Set up peer event handlers
+      peer.on("signal", (data) => {
+        console.log("Signaling data generated", { initiator, targetUserId });
+        if (initiator) {
+          socketRef.current.emit("callUser", {
+            userToCall: targetUserId,
+            signalData: data,
+            from: socketRef.current.id,
+          });
+        } else {
+          socketRef.current.emit("answerCall", { signal: data, to: targetUserId });
+        }
+      });
+
+      peer.on("stream", (currentStream) => {
+        console.log("Received stream from peer");
+        if (remoteVideo.current) {
+          remoteVideo.current.srcObject = currentStream;
+        }
+      });
+
+      peer.on("error", (err) => {
+        console.error("Peer connection error:", err);
+        setConnectionError(`Connection error: ${err.message}`);
+      });
+
+      return peer;
+    } catch (err) {
+      console.error("Error creating peer:", err);
+      setConnectionError(`Failed to create peer: ${err.message}`);
+      return null;
+    }
+  }, []);
+
+  // Reset all call state but avoid using peer.destroy()
+  const handleEndCall = () => {
+    // Clear the remote video
+    if (remoteVideo.current && remoteVideo.current.srcObject) {
+      const tracks = remoteVideo.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      remoteVideo.current.srcObject = null;
+    }
+    
+    // Don't try to destroy the peer, just remove the reference
+    // This avoids the process.nextTick error
+    peerRef.current = null;
+    
+    // Reset state
+    setCallAccepted(false);
+    setReceivingCall(false);
+    
+    // Notify other users if needed
+    if (socketRef.current && caller) {
+      socketRef.current.emit("call-ended", { to: caller });
+    }
+  };
+
+  // Initialize socket connection and media stream
   useEffect(() => {
-    socketRef.current = io(SOCKET_SERVER_URL);
+    // Clean up function for the entire component
+    const cleanup = () => {
+      // Stop all tracks in the local stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Stop screen share if active
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      // End call if active
+      if (callAccepted) {
+        handleEndCall();
+      }
+      
+      // Disconnect socket
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
 
-    // Get local video/audio stream
+    // Initialize socket
+    socketRef.current = io(SOCKET_SERVER_URL);
+    
+    // Socket event listeners
+    const setupSocketListeners = () => {
+      // When joining a room, get the other users
+      socketRef.current.on("all users", (users) => {
+        console.log("Received all users:", users);
+        setOtherUsers(users);
+      });
+
+      // Listen for an incoming call
+      socketRef.current.on("callUser", (data) => {
+        console.log("Incoming call from:", data.from);
+        setReceivingCall(true);
+        setCaller(data.from);
+        setCallerSignal(data.signal);
+      });
+
+      // When call is accepted
+      socketRef.current.on("callAccepted", (signal) => {
+        console.log("Call accepted, received signal");
+        setCallAccepted(true);
+        if (peerRef.current) {
+          peerRef.current.signal(signal);
+        }
+      });
+
+      // Handle call ended by the other user
+      socketRef.current.on("call-ended", () => {
+        console.log("Call ended by the other user");
+        handleEndCall();
+      });
+
+      // Handle disconnection events
+      socketRef.current.on("user-disconnected", (userId) => {
+        console.log("User disconnected:", userId);
+        if (callAccepted && caller === userId) {
+          // Reset call state if the user we're in a call with disconnects
+          handleEndCall();
+        }
+        
+        // Update other users list
+        setOtherUsers(prev => prev.filter(id => id !== userId));
+      });
+
+      // Handle reconnection
+      socketRef.current.on("connect", () => {
+        console.log("Socket reconnected, rejoining room");
+        socketRef.current.emit("join room", roomId);
+      });
+    };
+
+    // Get user media
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        setStream(stream);
+      .then((mediaStream) => {
+        console.log("Got local media stream");
+        setStream(mediaStream);
         if (localVideo.current) {
-          localVideo.current.srcObject = stream;
+          localVideo.current.srcObject = mediaStream;
         }
-        // Join the specified room
+        
+        setupSocketListeners();
+        
+        // Join the room after we have our stream
         socketRef.current.emit("join room", roomId);
       })
-      .catch((err) => console.error("Failed to get stream", err));
-
-    // When joining a room, get the other users (if any)
-    socketRef.current.on("all users", (users) => {
-      if (users.length > 0) {
-        // Assume a one-to-one call; take the first user as the other peer
-        setOtherUser(users[0]);
-      }
-    });
-
-    // Listen for an incoming call from another user
-    socketRef.current.on("callUser", (data) => {
-      setReceivingCall(true);
-      setCaller(data.from);
-      setCallerSignal(data.signal);
-    });
-
-    // When the caller receives an answer, complete the connection
-    socketRef.current.on("callAccepted", (signal) => {
-      setCallAccepted(true);
-      if (peer) {
-        peer.signal(signal);
-      }
-    });
-
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, [roomId, peer]);
-
-  const callUser = () => {
-    // Create a SimplePeer as initiator
-    const initiatorPeer = new SimplePeer({
-      initiator: true,
-      trickle: false,
-      stream: stream,
-    });
-
-    // When SimplePeer generates signaling data, send it to the other user (by socket ID)
-    initiatorPeer.on("signal", (data) => {
-      socketRef.current.emit("callUser", {
-        userToCall: otherUser,
-        signalData: data,
-        from: socketRef.current.id,
+      .catch((err) => {
+        console.error("Failed to get stream", err);
+        setConnectionError(`Media access error: ${err.message}`);
       });
-    });
 
-    // When a stream is received, set it as the remote video stream
-    initiatorPeer.on("stream", (currentStream) => {
-      if (remoteVideo.current) {
-        remoteVideo.current.srcObject = currentStream;
-      }
-    });
+    return cleanup;
+  }, [roomId]);
 
-    setPeer(initiatorPeer);
-  };
+  // Handle calling another user
+  const callUser = useCallback((userId) => {
+    console.log("Initiating call to:", userId);
+    if (!stream) {
+      setConnectionError("No local stream available");
+      return;
+    }
+    
+    // Create a new peer as initiator
+    const newPeer = createPeer(true, userId, stream);
+    peerRef.current = newPeer;
+  }, [stream, createPeer]);
 
-  const answerCall = () => {
+  // Handle answering an incoming call
+  const answerCall = useCallback(() => {
+    console.log("Answering call from:", caller);
+    if (!stream) {
+      setConnectionError("No local stream available");
+      return;
+    }
+    
     setCallAccepted(true);
-    // Create a SimplePeer as non-initiator to answer the incoming call
-    const answererPeer = new SimplePeer({
-      initiator: false,
-      trickle: false,
-      stream: stream,
-    });
     
-    answererPeer.on("signal", (data) => {
-      socketRef.current.emit("answerCall", { signal: data, to: caller });
-    });
-
-    answererPeer.on("stream", (currentStream) => {
-      if (remoteVideo.current) {
-        remoteVideo.current.srcObject = currentStream;
-      }
-    });
+    // Create a new peer to answer the call
+    const newPeer = createPeer(false, caller, stream);
+    peerRef.current = newPeer;
     
-    // Signal the caller with the received callerSignal
-    answererPeer.signal(callerSignal);
-    setPeer(answererPeer);
-  };
+    // Signal with the callerSignal
+    if (newPeer && callerSignal) {
+      newPeer.signal(callerSignal);
+    }
+  }, [stream, caller, callerSignal, createPeer]);
 
-  // Toggle screen sharing feature
+  // Toggle screen sharing
   const toggleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
-        // Capture display media (screen share)
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
         });
         screenStreamRef.current = displayStream;
         setIsScreenSharing(true);
 
-        // Replace local video stream with screen share stream
+        // Replace local video display
         if (localVideo.current) {
           localVideo.current.srcObject = displayStream;
         }
         
-        // If there is an active peer connection, replace the video track
-        if (peer) {
+        // Replace track in the peer connection if it exists
+        if (peerRef.current && peerRef.current._pc) {
           const screenTrack = displayStream.getVideoTracks()[0];
-          const sender = peer._pc.getSenders().find(s => s.track && s.track.kind === "video");
-          if (sender) {
-            sender.replaceTrack(screenTrack);
+          const senders = peerRef.current._pc.getSenders();
+          const videoSender = senders.find(s => s.track && s.track.kind === "video");
+          if (videoSender) {
+            videoSender.replaceTrack(screenTrack);
           }
+          
+          // Add track ended event listener
+          screenTrack.onended = () => {
+            toggleScreenShare();
+          };
         }
-        
-        // When the user stops sharing manually, revert back to camera
-        displayStream.getVideoTracks()[0].onended = () => {
-          toggleScreenShare();
-        };
-
       } catch (err) {
-        console.error("Error sharing the screen: ", err);
+        console.error("Error sharing screen:", err);
+        setConnectionError(`Screen sharing error: ${err.message}`);
       }
     } else {
-      // Revert to original camera stream
-      if (localVideo.current) {
+      // Revert to camera
+      if (stream && localVideo.current) {
         localVideo.current.srcObject = stream;
       }
-      // If there is an active peer connection, replace the track with the original camera track
-      if (peer && stream) {
+      
+      // Replace track in peer connection
+      if (peerRef.current && peerRef.current._pc && stream) {
         const cameraTrack = stream.getVideoTracks()[0];
-        const sender = peer._pc.getSenders().find(s => s.track && s.track.kind === "video");
-        if (sender) {
-          sender.replaceTrack(cameraTrack);
+        const senders = peerRef.current._pc.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === "video");
+        if (videoSender && cameraTrack) {
+          videoSender.replaceTrack(cameraTrack);
         }
       }
-      // Stop screen share stream if active
+      
+      // Stop screen sharing tracks
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => track.stop());
+        screenStreamRef.current = null;
       }
+      
       setIsScreenSharing(false);
     }
   };
@@ -183,10 +295,24 @@ const MeetingRoom = () => {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.headerTitle}>Meeting Room</h1>
+        {roomId && <p style={styles.roomInfo}>Room ID: {roomId}</p>}
       </header>
+      
+      {connectionError && (
+        <div style={styles.errorMessage}>
+          <p>{connectionError}</p>
+          <button 
+            style={styles.retryButton} 
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      
       <div style={styles.videoContainer}>
         <div style={styles.videoWrapper}>
-          <h4 style={styles.videoTitle}>Local Stream</h4>
+          <h4 style={styles.videoTitle}>Local Stream {isScreenSharing && "(Screen Sharing)"}</h4>
           <video
             playsInline
             muted
@@ -205,23 +331,60 @@ const MeetingRoom = () => {
           />
         </div>
       </div>
+      
       <div style={styles.buttonBar}>
-        {/** Call button shows only if no call is active, no incoming call, and there's another user */}
-        {!callAccepted && !receivingCall && otherUser && (
-          <button style={styles.button} onClick={callUser}>Call</button>
+        {otherUsers.length > 0 && !callAccepted && !receivingCall && (
+          <div>
+            <p style={styles.usersText}>
+              {otherUsers.length} other {otherUsers.length === 1 ? 'user' : 'users'} in the room
+            </p>
+            {otherUsers.map(userId => (
+              <button 
+                key={userId}
+                style={styles.button} 
+                onClick={() => callUser(userId)}
+              >
+                Call User {userId.substring(0, 5)}...
+              </button>
+            ))}
+          </div>
         )}
+        
         {receivingCall && !callAccepted && (
           <div style={styles.incomingCall}>
-            <h3 style={styles.incomingText}>Incoming Call...</h3>
+            <h3 style={styles.incomingText}>Incoming Call from {caller.substring(0, 8)}...</h3>
             <button style={styles.button} onClick={answerCall}>Answer</button>
           </div>
         )}
-        {callAccepted && <p style={styles.callStatus}>Call in progress...</p>}
+        
+        {callAccepted && (
+          <div style={styles.callControls}>
+            <p style={styles.callStatus}>Call in progress...</p>
+            <button 
+              style={{...styles.button, backgroundColor: frenchRed}} 
+              onClick={handleEndCall}
+            >
+              End Call
+            </button>
+          </div>
+        )}
+        
         {stream && (
-          <button style={styles.button} onClick={toggleScreenShare}>
+          <button 
+            style={{
+              ...styles.button, 
+              backgroundColor: isScreenSharing ? frenchRed : frenchBlue
+            }} 
+            onClick={toggleScreenShare}
+          >
             {isScreenSharing ? "Stop Screen Share" : "Share Screen"}
           </button>
         )}
+      </div>
+      
+      <div style={styles.connectionInfo}>
+        <p>Socket ID: {socketRef.current?.id || 'Connecting...'}</p>
+        <p>Connection Status: {socketRef.current?.connected ? 'Connected' : 'Disconnected'}</p>
       </div>
     </div>
   );
@@ -245,6 +408,11 @@ const styles = {
     margin: "0",
     fontSize: "2rem"
   },
+  roomInfo: {
+    margin: "5px 0",
+    fontSize: "1rem",
+    opacity: 0.8
+  },
   videoContainer: {
     display: "flex",
     justifyContent: "center",
@@ -259,9 +427,12 @@ const styles = {
   },
   video: {
     width: "320px",
+    height: "240px",
+    background: "#000",
     border: `4px solid ${frenchBlue}`,
     borderRadius: "10px",
-    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.5)"
+    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.5)",
+    objectFit: "cover"
   },
   buttonBar: {
     marginTop: "30px",
@@ -286,6 +457,36 @@ const styles = {
   callStatus: {
     fontSize: "1.1rem",
     marginTop: "10px"
+  },
+  callControls: {
+    margin: "10px 0"
+  },
+  usersText: {
+    margin: "10px 0"
+  },
+  errorMessage: {
+    backgroundColor: frenchRed,
+    color: frenchWhite,
+    padding: "10px",
+    borderRadius: "5px",
+    margin: "10px 0",
+    textAlign: "center"
+  },
+  retryButton: {
+    backgroundColor: frenchWhite,
+    color: frenchRed,
+    padding: "8px 16px",
+    border: "none",
+    borderRadius: "5px",
+    margin: "10px 0",
+    cursor: "pointer",
+    fontSize: "0.9rem"
+  },
+  connectionInfo: {
+    marginTop: "20px",
+    textAlign: "center",
+    fontSize: "0.8rem",
+    opacity: 0.7
   }
 };
 

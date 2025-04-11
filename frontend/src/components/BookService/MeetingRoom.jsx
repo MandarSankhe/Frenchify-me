@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import io from "socket.io-client";
 import SimplePeer from "simple-peer";
+import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from "react-icons/fa";
 
 const frenchBlue = "#0055A4";
 const frenchRed = "#EF4135";
@@ -8,7 +9,8 @@ const frenchWhite = "#FFFFFF";
 const darkGray = "#2E2E2E";
 
 // Set your Socket.IO server URL; adjust if needed
-const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
+// const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
+const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
 
 const MeetingRoom = () => {
   const [stream, setStream] = useState(null);
@@ -19,6 +21,10 @@ const MeetingRoom = () => {
   const [otherUsers, setOtherUsers] = useState([]);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
+  const [isCalling, setIsCalling] = useState(false); // Outgoing call status
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [videoSize, setVideoSize] = useState(320); // adjustable width for videos
 
   const localVideo = useRef();
   const remoteVideo = useRef();
@@ -65,17 +71,19 @@ const MeetingRoom = () => {
       peer.on("error", (err) => {
         console.error("Peer connection error:", err);
         setConnectionError(`Connection error: ${err.message}`);
+        setIsCalling(false); // Reset calling state on error
       });
 
       return peer;
     } catch (err) {
       console.error("Error creating peer:", err);
       setConnectionError(`Failed to create peer: ${err.message}`);
+      setIsCalling(false); // Reset calling state on error
       return null;
     }
   }, []);
 
-  // Reset all call state but avoid using peer.destroy()
+  // Reset call state without calling peer.destroy()
   const handleEndCall = () => {
     // Clear the remote video
     if (remoteVideo.current && remoteVideo.current.srcObject) {
@@ -84,13 +92,13 @@ const MeetingRoom = () => {
       remoteVideo.current.srcObject = null;
     }
     
-    // Don't try to destroy the peer, just remove the reference
-    // This avoids the process.nextTick error
+    // Remove peer reference
     peerRef.current = null;
     
     // Reset state
     setCallAccepted(false);
     setReceivingCall(false);
+    setIsCalling(false);
     
     // Notify other users if needed
     if (socketRef.current && caller) {
@@ -100,41 +108,31 @@ const MeetingRoom = () => {
 
   // Initialize socket connection and media stream
   useEffect(() => {
-    // Clean up function for the entire component
+    // Cleanup function for the component
     const cleanup = () => {
-      // Stop all tracks in the local stream
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      
-      // Stop screen share if active
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => track.stop());
       }
-      
-      // End call if active
-      if (callAccepted) {
+      if (callAccepted || isCalling) {
         handleEndCall();
       }
-      
-      // Disconnect socket
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
     };
 
-    // Initialize socket
     socketRef.current = io(SOCKET_SERVER_URL);
     
     // Socket event listeners
     const setupSocketListeners = () => {
-      // When joining a room, get the other users
       socketRef.current.on("all users", (users) => {
         console.log("Received all users:", users);
         setOtherUsers(users);
       });
 
-      // Listen for an incoming call
       socketRef.current.on("callUser", (data) => {
         console.log("Incoming call from:", data.from);
         setReceivingCall(true);
@@ -142,41 +140,34 @@ const MeetingRoom = () => {
         setCallerSignal(data.signal);
       });
 
-      // When call is accepted
       socketRef.current.on("callAccepted", (signal) => {
         console.log("Call accepted, received signal");
         setCallAccepted(true);
+        setIsCalling(false);
         if (peerRef.current) {
           peerRef.current.signal(signal);
         }
       });
 
-      // Handle call ended by the other user
       socketRef.current.on("call-ended", () => {
         console.log("Call ended by the other user");
         handleEndCall();
       });
 
-      // Handle disconnection events
       socketRef.current.on("user-disconnected", (userId) => {
         console.log("User disconnected:", userId);
-        if (callAccepted && caller === userId) {
-          // Reset call state if the user we're in a call with disconnects
+        if ((callAccepted || isCalling) && caller === userId) {
           handleEndCall();
         }
-        
-        // Update other users list
         setOtherUsers(prev => prev.filter(id => id !== userId));
       });
 
-      // Handle reconnection
       socketRef.current.on("connect", () => {
         console.log("Socket reconnected, rejoining room");
         socketRef.current.emit("join room", roomId);
       });
     };
 
-    // Get user media
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
       .then((mediaStream) => {
@@ -187,8 +178,6 @@ const MeetingRoom = () => {
         }
         
         setupSocketListeners();
-        
-        // Join the room after we have our stream
         socketRef.current.emit("join room", roomId);
       })
       .catch((err) => {
@@ -207,7 +196,9 @@ const MeetingRoom = () => {
       return;
     }
     
-    // Create a new peer as initiator
+    setIsCalling(true);
+    setCaller(userId);
+    
     const newPeer = createPeer(true, userId, stream);
     peerRef.current = newPeer;
   }, [stream, createPeer]);
@@ -222,11 +213,9 @@ const MeetingRoom = () => {
     
     setCallAccepted(true);
     
-    // Create a new peer to answer the call
     const newPeer = createPeer(false, caller, stream);
     peerRef.current = newPeer;
     
-    // Signal with the callerSignal
     if (newPeer && callerSignal) {
       newPeer.signal(callerSignal);
     }
@@ -242,12 +231,10 @@ const MeetingRoom = () => {
         screenStreamRef.current = displayStream;
         setIsScreenSharing(true);
 
-        // Replace local video display
         if (localVideo.current) {
           localVideo.current.srcObject = displayStream;
         }
         
-        // Replace track in the peer connection if it exists
         if (peerRef.current && peerRef.current._pc) {
           const screenTrack = displayStream.getVideoTracks()[0];
           const senders = peerRef.current._pc.getSenders();
@@ -256,7 +243,6 @@ const MeetingRoom = () => {
             videoSender.replaceTrack(screenTrack);
           }
           
-          // Add track ended event listener
           screenTrack.onended = () => {
             toggleScreenShare();
           };
@@ -266,12 +252,10 @@ const MeetingRoom = () => {
         setConnectionError(`Screen sharing error: ${err.message}`);
       }
     } else {
-      // Revert to camera
       if (stream && localVideo.current) {
         localVideo.current.srcObject = stream;
       }
       
-      // Replace track in peer connection
       if (peerRef.current && peerRef.current._pc && stream) {
         const cameraTrack = stream.getVideoTracks()[0];
         const senders = peerRef.current._pc.getSenders();
@@ -281,7 +265,6 @@ const MeetingRoom = () => {
         }
       }
       
-      // Stop screen sharing tracks
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => track.stop());
         screenStreamRef.current = null;
@@ -289,6 +272,31 @@ const MeetingRoom = () => {
       
       setIsScreenSharing(false);
     }
+  };
+
+  // Toggle mute/unmute functionality
+  const toggleMute = () => {
+    if (stream) {
+      stream.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted(prev => !prev);
+    }
+  };
+
+  // Toggle video on/off functionality
+  const toggleVideo = () => {
+    if (stream) {
+      stream.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsVideoOff(prev => !prev);
+    }
+  };
+
+  // Handler to adjust video sizes via a slider (values between 240 and 640)
+  const handleVideoSizeChange = (e) => {
+    setVideoSize(Number(e.target.value));
   };
 
   return (
@@ -312,13 +320,15 @@ const MeetingRoom = () => {
       
       <div style={styles.videoContainer}>
         <div style={styles.videoWrapper}>
-          <h4 style={styles.videoTitle}>Local Stream {isScreenSharing && "(Screen Sharing)"}</h4>
+          <h4 style={styles.videoTitle}>
+            Local Stream {isScreenSharing && "(Screen Sharing)"}
+          </h4>
           <video
             playsInline
             muted
             ref={localVideo}
             autoPlay
-            style={styles.video}
+            style={{ ...styles.video, width: videoSize, height: videoSize * 0.75 }}
           />
         </div>
         <div style={styles.videoWrapper}>
@@ -327,59 +337,88 @@ const MeetingRoom = () => {
             playsInline
             ref={remoteVideo}
             autoPlay
-            style={styles.video}
+            style={{ ...styles.video, width: videoSize, height: videoSize * 0.75 }}
           />
         </div>
       </div>
       
       <div style={styles.buttonBar}>
-        {otherUsers.length > 0 && !callAccepted && !receivingCall && (
-          <div>
-            <p style={styles.usersText}>
-              {otherUsers.length} other {otherUsers.length === 1 ? 'user' : 'users'} in the room
-            </p>
-            {otherUsers.map(userId => (
-              <button 
-                key={userId}
-                style={styles.button} 
-                onClick={() => callUser(userId)}
-              >
-                Call User {userId.substring(0, 5)}...
-              </button>
-            ))}
-          </div>
-        )}
-        
-        {receivingCall && !callAccepted && (
-          <div style={styles.incomingCall}>
-            <h3 style={styles.incomingText}>Incoming Call from {caller.substring(0, 8)}...</h3>
-            <button style={styles.button} onClick={answerCall}>Answer</button>
-          </div>
-        )}
-        
-        {callAccepted && (
-          <div style={styles.callControls}>
-            <p style={styles.callStatus}>Call in progress...</p>
-            <button 
-              style={{...styles.button, backgroundColor: frenchRed}} 
-              onClick={handleEndCall}
-            >
-              End Call
-            </button>
-          </div>
-        )}
-        
-        {stream && (
-          <button 
-            style={{
-              ...styles.button, 
-              backgroundColor: isScreenSharing ? frenchRed : frenchBlue
-            }} 
-            onClick={toggleScreenShare}
-          >
-            {isScreenSharing ? "Stop Screen Share" : "Share Screen"}
+        <div style={styles.controlsRow}>
+          <button style={styles.controlButton} onClick={toggleMute}>
+            {isMuted ? <FaMicrophoneSlash size={20} /> : <FaMicrophone size={20} />}
           </button>
-        )}
+          <button style={styles.controlButton} onClick={toggleVideo}>
+            {isVideoOff ? <FaVideoSlash size={20} /> : <FaVideo size={20} />}
+          </button>
+          {stream && (
+            <button 
+              style={{
+                ...styles.button, 
+                backgroundColor: isScreenSharing ? frenchRed : frenchBlue
+              }} 
+              onClick={toggleScreenShare}
+            >
+              {isScreenSharing ? "Stop Screen Share" : "Share Screen"}
+            </button>
+          )}
+        </div>
+        
+        <div style={styles.controlsRow}>
+          {otherUsers.length > 0 && !callAccepted && !receivingCall && !isCalling && (
+            <div>
+              <p style={styles.usersText}>
+                {otherUsers.length} other {otherUsers.length === 1 ? 'user' : 'users'} in the room
+              </p>
+              {otherUsers.map(userId => (
+                <button 
+                  key={userId}
+                  style={styles.button} 
+                  onClick={() => callUser(userId)}
+                >
+                  Call User {userId.substring(0, 5)}...
+                </button>
+              ))}
+            </div>
+          )}
+          
+          {isCalling && !callAccepted && (
+            <div style={styles.callControls}>
+              <p style={styles.callStatus}>Calling...</p>
+            </div>
+          )}
+          
+          {receivingCall && !callAccepted && (
+            <div style={styles.incomingCall}>
+              <h3 style={styles.incomingText}>Incoming Call from {caller.substring(0, 8)}...</h3>
+              <button style={styles.button} onClick={answerCall}>Answer</button>
+            </div>
+          )}
+          
+          {callAccepted && (
+            <div style={styles.callControls}>
+              <p style={styles.callStatus}>Call in progress...</p>
+              <button 
+                style={{...styles.button, backgroundColor: frenchRed}} 
+                onClick={handleEndCall}
+              >
+                End Call
+              </button>
+            </div>
+          )}
+        </div>
+        
+        <div style={styles.sliderContainer}>
+          <label htmlFor="videoSize" style={styles.sliderLabel}>Adjust Video Size:</label>
+          <input
+            type="range"
+            id="videoSize"
+            name="videoSize"
+            min="240"
+            max="640"
+            value={videoSize}
+            onChange={handleVideoSizeChange}
+          />
+        </div>
       </div>
       
       <div style={styles.connectionInfo}>
@@ -396,47 +435,61 @@ const styles = {
     color: frenchWhite,
     minHeight: "100vh",
     padding: "20px",
-    fontFamily: "Arial, sans-serif"
+    fontFamily: "Arial, sans-serif",
   },
   header: {
     textAlign: "center",
     padding: "10px 0",
     borderBottom: `2px solid ${frenchBlue}`,
-    marginBottom: "20px"
+    marginBottom: "20px",
   },
   headerTitle: {
     margin: "0",
-    fontSize: "2rem"
+    fontSize: "2rem",
   },
   roomInfo: {
     margin: "5px 0",
     fontSize: "1rem",
-    opacity: 0.8
+    opacity: 0.8,
   },
   videoContainer: {
     display: "flex",
     justifyContent: "center",
     flexWrap: "wrap",
-    gap: "20px"
+    gap: "20px",
   },
   videoWrapper: {
-    textAlign: "center"
+    textAlign: "center",
   },
   videoTitle: {
-    marginBottom: "10px"
+    marginBottom: "10px",
   },
   video: {
-    width: "320px",
-    height: "240px",
     background: "#000",
     border: `4px solid ${frenchBlue}`,
     borderRadius: "10px",
     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.5)",
-    objectFit: "cover"
+    objectFit: "cover",
   },
   buttonBar: {
     marginTop: "30px",
-    textAlign: "center"
+    textAlign: "center",
+  },
+  controlsRow: {
+    marginBottom: "20px",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  controlButton: {
+    backgroundColor: frenchBlue,
+    color: frenchWhite,
+    border: "none",
+    padding: "10px",
+    borderRadius: "5px",
+    cursor: "pointer",
   },
   button: {
     backgroundColor: frenchBlue,
@@ -446,23 +499,34 @@ const styles = {
     borderRadius: "5px",
     margin: "0 10px",
     cursor: "pointer",
-    fontSize: "1rem"
+    fontSize: "1rem",
+  },
+  usersText: {
+    margin: "10px 0",
+    textAlign: "center",
   },
   incomingCall: {
-    marginBottom: "20px"
+    marginBottom: "20px",
   },
   incomingText: {
-    margin: "10px 0"
+    margin: "10px 0",
   },
   callStatus: {
     fontSize: "1.1rem",
-    marginTop: "10px"
+    marginTop: "10px",
   },
   callControls: {
-    margin: "10px 0"
+    margin: "10px 0",
   },
-  usersText: {
-    margin: "10px 0"
+  sliderContainer: {
+    marginTop: "20px",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "10px",
+  },
+  sliderLabel: {
+    fontSize: "0.9rem",
   },
   errorMessage: {
     backgroundColor: frenchRed,
@@ -470,7 +534,7 @@ const styles = {
     padding: "10px",
     borderRadius: "5px",
     margin: "10px 0",
-    textAlign: "center"
+    textAlign: "center",
   },
   retryButton: {
     backgroundColor: frenchWhite,
@@ -478,16 +542,16 @@ const styles = {
     padding: "8px 16px",
     border: "none",
     borderRadius: "5px",
-    margin: "10px 0",
+    marginTop: "10px",
     cursor: "pointer",
-    fontSize: "0.9rem"
+    fontSize: "0.9rem",
   },
   connectionInfo: {
     marginTop: "20px",
     textAlign: "center",
     fontSize: "0.8rem",
-    opacity: 0.7
-  }
+    opacity: 0.7,
+  },
 };
 
 export default MeetingRoom;

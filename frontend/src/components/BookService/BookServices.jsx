@@ -11,8 +11,8 @@ const BookServices = () => {
       id: 1,
       title: "Video Call with Tutor Session",
       description: "Book a one-on-one video session with a certified tutor for personalized guidance.",
-      // Replace the image URL with your actual asset (local or hosted)
-      imageUrl: "/images/video-call-service.png"
+      
+      imageUrl: "/images/video-call-service.jpg"
     }
   ];
 

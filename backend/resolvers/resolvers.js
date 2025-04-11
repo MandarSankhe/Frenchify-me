@@ -809,7 +809,7 @@ const resolvers = {
           booking.status = "confirmed";
         }
         await booking.save();
-        return await booking.populate("trainee").populate("trainer").execPopulate();
+        return await booking.populate("trainee trainer");
       } catch (error) {
         console.error("Error in trainer RSVP:", error);
         throw new Error("Failed to RSVP");

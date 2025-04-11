@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { useAuth } from "../../context/AuthContext";
 
 const frenchBlue = "#0055A4";
@@ -27,11 +29,60 @@ const modalContentStyle = {
   boxShadow: "0 0 10px rgba(0,0,0,0.3)",
 };
 
+// Create time options from 10:00 AM to 5:00 PM in half-hour increments.
+const generateTimeSlots = () => {
+  const slots = [];
+  // Start at 10:00 (10 AM) until 17:00 (5 PM).
+  let hour = 10;
+  let minute = 0;
+  while (hour < 17 || (hour === 17 && minute === 0)) {
+    // Format display (e.g., 10:00 AM, 10:30 AM, etc.)
+    const displayHour = hour > 12 ? hour - 12 : hour;
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayMinute = minute === 0 ? "00" : minute;
+    const displayTime = `${displayHour}:${displayMinute} ${ampm}`;
+    // Underlying value in 24-hour format HH:mm (e.g., "10:00", "10:30")
+    const valueTime = `${hour.toString().padStart(2, "0")}:${displayMinute}`;
+    slots.push({ display: displayTime, value: valueTime });
+    // Increase by 30 minutes
+    if (minute === 0) {
+      minute = 30;
+    } else {
+      minute = 0;
+      hour++;
+    }
+  }
+  return slots;
+};
+
+const timeSlots = generateTimeSlots();
+
+// Helper to combine selected date and time into a proper ISO-like string "YYYY-MM-DDTHH:mm"
+const combineDateAndTime = (date, timeStr) => {
+  const [hoursStr, minutesStr] = timeStr.split(":");
+  // Clone the date to prevent modifying the original state
+  const combined = new Date(date);
+  combined.setHours(parseInt(hoursStr, 10));
+  combined.setMinutes(parseInt(minutesStr, 10));
+  combined.setSeconds(0);
+  combined.setMilliseconds(0);
+
+  // Format as YYYY-MM-DDTHH:mm manually
+  const year = combined.getFullYear();
+  const month = (combined.getMonth() + 1).toString().padStart(2, "0");
+  const day = combined.getDate().toString().padStart(2, "0");
+  const hours = combined.getHours().toString().padStart(2, "0");
+  const minutes = combined.getMinutes().toString().padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const BookingModal = ({ trainer, existingBooking, onClose, onBookingUpdate }) => {
   const { user } = useAuth();
-  // If an active booking is passed in, we use that in the modal;
-  // otherwise, we’re in scheduling mode.
-  const [scheduledTime, setScheduledTime] = useState("");
+  
+  // If an active booking is passed in, we use that in the modal; otherwise, we’re in scheduling mode.
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState("");
   const [booking, setBooking] = useState(existingBooking);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -44,12 +95,16 @@ const BookingModal = ({ trainer, existingBooking, onClose, onBookingUpdate }) =>
 
   // Mutation: Schedule a new booking.
   const scheduleBooking = async () => {
-    if (!scheduledTime) {
+    // Validate that a date and time have been selected
+    if (!selectedDate || !selectedTime) {
       setError("Please select a date and time.");
       return;
     }
     setLoading(true);
     setError(null);
+
+    // Combine the date and time into one string with the proper format.
+    const scheduledTime = combineDateAndTime(selectedDate, selectedTime);
 
     const query = `
       mutation ScheduleBooking($input: BookingInput!) {
@@ -86,7 +141,7 @@ const BookingModal = ({ trainer, existingBooking, onClose, onBookingUpdate }) =>
       setError(err.message);
     } finally {
       setLoading(false);
-      onBookingUpdate && onBookingUpdate();
+      if(onBookingUpdate) onBookingUpdate();
     }
   };
 
@@ -125,6 +180,14 @@ const BookingModal = ({ trainer, existingBooking, onClose, onBookingUpdate }) =>
     }
   };
 
+  // Create a date that represents tomorrow (to disable today and earlier dates)
+  const getTomorrow = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
+  };
+
   return (
     <div style={modalOverlayStyle}>
       <div style={modalContentStyle}>
@@ -133,14 +196,33 @@ const BookingModal = ({ trainer, existingBooking, onClose, onBookingUpdate }) =>
         {!booking && (
           <>
             <div className="form-group">
-              <label>Select Date &amp; Time:</label>
-              <input
-                type="datetime-local"
+              <label>Select Date:</label>
+              <DatePicker
+                selected={selectedDate}
+                onChange={(date) => setSelectedDate(date)}
+                minDate={getTomorrow()}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="Select a date"
                 className="form-control"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
               />
             </div>
+
+            <div className="form-group mt-3">
+              <label>Select Time:</label>
+              <select
+                className="form-control"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+              >
+                <option value="">Select a time</option>
+                {timeSlots.map((slot) => (
+                  <option key={slot.value} value={slot.value}>
+                    {slot.display}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {error && <p className="text-danger">{error}</p>}
             <button
               className="btn btn-primary mt-3"

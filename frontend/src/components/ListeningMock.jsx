@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Clock, Eye, CheckCircle, Circle } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
+import { useAuth } from "../context/AuthContext";
+
 
 // French color palette
 const frenchBlue = "#0055A4";
@@ -45,7 +47,7 @@ const ListeningMock = () => {
   const audioRef = useRef(null);
 
   // (Optional) If you are using an authentication context, you might need the user information:
-  // const { user } = useAuth();
+  const { user } = useAuth();
 
   // -------------------------
   // Fetch Listening Exams
@@ -269,7 +271,7 @@ const ListeningMock = () => {
       input: {
         // If you have a user context, include the user id here.
         // For example, user.id, otherwise supply a test ID.
-        // userId: user.id, 
+        userId: user.id, 
         testModelName: "TcfListening",
         testId: selectedExam.id,
         score: calculatedScore,
@@ -621,6 +623,7 @@ const ListeningMock = () => {
       </div>
 
       {showModeModal && renderModeModal()}
+      {isLoading && <LoadingSpinner />}
 
       {audioError && (
         <div className="alert alert-danger mt-3" role="alert">

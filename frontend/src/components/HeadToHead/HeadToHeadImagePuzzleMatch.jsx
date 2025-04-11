@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import LoadingSpinner from "../LoadingSpinner";
 import { useAuth } from "../../context/AuthContext";
+import io from "socket.io-client";
 import Chat from "./Chat";
+
+const SOCKET_SERVER_URL = "https://frenchify-me.onrender.com";
+//const SOCKET_SERVER_URL = "http://localhost:8736"; // For local testing
 
 // GraphQL Queries & Mutations
 const GET_USERS = gql`
@@ -157,6 +161,7 @@ const HeadToHeadImagePuzzleMatch = () => {
   const frenchWhite = "#FFFFFF";
 
   const { user } = useAuth();
+  const socketRef = useRef(null);
   const [selectedExam, setSelectedExam] = useState(null);
   const [selectedOpponent, setSelectedOpponent] = useState("");
   const [activeMatch, setActiveMatch] = useState(null);
@@ -216,6 +221,24 @@ const HeadToHeadImagePuzzleMatch = () => {
   const [acceptMatch] = useMutation(ACCEPT_IMAGE_MATCH);
   const [submitAnswer] = useMutation(SUBMIT_IMAGE_ANSWER);
   const [finishMatch] = useMutation(FINISH_IMAGE_MATCH);
+
+
+  useEffect(() => {
+    // Initialize the socket connection once
+    socketRef.current = io(SOCKET_SERVER_URL);
+  
+    // Optionally, you can add event listeners here if needed
+    socketRef.current.on("connect", () => {
+      console.log("Connected with socket id:", socketRef.current.id);
+    });
+  
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
 
   // Reset submission flag when a new question loads.
   useEffect(() => {
@@ -855,7 +878,7 @@ const HeadToHeadImagePuzzleMatch = () => {
   
             </div>
           </div>
-          <Chat matchId={activeMatch.id} currentUser={user} />
+          <Chat matchId={activeMatch.id} currentUser={user} socketRef={socketRef} />
         </div>
       );
     } else if (activeMatch.status === "completed") {

@@ -28,6 +28,9 @@ import Footer from "./components/Footer";
 import PendingTutorHome from "./components/Trainer/PendingTutorHome";
 import TrainerHome from "./components/Trainer/TrainerHome";
 import AdminHome from "./components/Admin/AdminHome";
+import BookServices from "./components/BookService/BookServices";
+import VideoCallSession from "./components/BookService/VideoCallSession";
+import MeetingRoom from "./components/BookService/MeetingRoom";
 
 // Protected route component to restrict access if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -288,6 +291,47 @@ const App = () => {
               </>
             ),
         },
+        {
+            path: "/book-service",
+            element: (
+              <>
+                <Navbar />
+                <div style={containerStyle}>
+                  <ProtectedRoute>
+                    <BookServices />
+                  </ProtectedRoute>
+                </div>
+              </>
+            ),
+        },
+        {
+            path: "/video-call-session",
+            element: (
+              <>
+                <Navbar />
+                <div style={containerStyle}>
+                  <ProtectedRoute>
+                    <VideoCallSession />
+                  </ProtectedRoute>
+                </div>
+              </>
+            ),
+        },
+        {
+            path: "/meeting",
+            element: (
+              <>
+                <Navbar />
+                <div style={containerStyle}>
+                  <ProtectedRoute>
+                    <MeetingRoom />
+                  </ProtectedRoute>
+                </div>
+              </>
+            ),
+        },
+
+
     ]);
 
     return (

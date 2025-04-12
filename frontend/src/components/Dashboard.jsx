@@ -858,7 +858,7 @@ const Dashboard = () => {
                           {(
                             Object.values(skillProgress).reduce((sum, score) => sum + score, 0) /
                             Object.values(skillProgress).length
-                          ).toFixed(1)*15.6}%
+                          ).toFixed(1)*10}%
                         </strong>
                       </div>
                     </div>
@@ -1303,7 +1303,28 @@ const Dashboard = () => {
               </div>
             </div>
 
-
+            {showModal && ( <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+    <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content overflow-hidden" style={{ borderRadius: '1rem' }}>
+            <div className="modal-header" style={{ background: frenchBlue, color: frenchWhite }}>
+                <h5 className="modal-title">
+                    <i className="bi bi-file-earmark-pdf-fill me-2"></i> Transcript Ready!
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={()=> setShowModal(false)} ></button>
+            </div>
+            <div className="modal-body text-center py-4">
+                <i className="bi bi-file-earmark-check-fill display-4" style={{ color: frenchBlue, marginBottom: '1rem' }}></i>
+                <p className="lead mb-4"> Your learning transcript is ready to view or download. </p>
+                <div className="d-flex justify-content-center gap-3">
+                    <button className="btn btn-outline-secondary px-4 rounded-pill" onClick={()=> setShowModal(false)} > Close </button>
+                    <button className="btn btn-primary px-4 rounded-pill" onClick={()=> { window.open(transcriptUrl, "_blank"); setShowModal(false); }} > <i className="bi bi-download me-2"></i>Open PDF </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> )} {loading && ( <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1050 }}>
+    <LoadingSpinner />
+</div> )}
 
 
           </div>

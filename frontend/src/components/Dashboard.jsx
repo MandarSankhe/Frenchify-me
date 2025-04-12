@@ -405,6 +405,9 @@ const Dashboard = () => {
         case "Speaking":
           speakingData.push(point);
           break;
+        case "ListeningTraining":
+          listeningData.push(point);
+          break;
         default:
           console.warn("Unexpected skill:", entry.skill);
           break;

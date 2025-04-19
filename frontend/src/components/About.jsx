@@ -43,7 +43,7 @@ const About = () => {
                 style={{ backgroundColor: lightRed }}
               >
                 <img
-                  src="VRMX Ghibly.png"
+                  src="VRMX Ghibly2.png"
                   alt="Founders creating French learning platform"
                   className="img-fluid p-3"
                 />

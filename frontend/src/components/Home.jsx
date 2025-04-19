@@ -30,7 +30,6 @@ const Home = () => {
   const teamMembers = [
     { name: "Mandar", image: "mandaricon.png", linkedin: "https://www.linkedin.com/in/mandar-sankhe" },
     { name: "Rachna", image: "rachnaicon.png", linkedin: "https://www.linkedin.com/in/rachna-poonit-6a3b4b1ab/" },
-    { name: "Vipul", image: "vipulicon.png", linkedin: "https://www.linkedin.com/in/thatvipulprajapati" },
   ];
 
   return (

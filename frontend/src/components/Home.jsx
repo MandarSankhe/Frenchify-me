@@ -59,7 +59,8 @@ const Home = () => {
                 Your ultimate platform for French Learning
               </p>
               <div className="d-flex flex-wrap gap-3">
-                <button 
+                <button link to="/speakingmock"
+                  onClick={() => window.location.href = "/speakingmock"}
                   className="btn btn-lg px-4 py-3 fw-bold"
                   style={{ 
                     backgroundColor: frenchRed,
@@ -70,7 +71,8 @@ const Home = () => {
                 >
                   Get Started
                 </button>
-                <button 
+                <button link to="/headtoheadmatch"
+                  onClick={() => window.location.href = "/headtoheadmatch"}
                   className="btn btn-lg px-4 py-3 fw-bold"
                   style={{ 
                     backgroundColor: frenchBlue,
@@ -79,7 +81,7 @@ const Home = () => {
                     boxShadow: "0 4px 15px rgba(0, 85, 164, 0.3)"
                   }}
                 >
-                  Our Services
+                  Play Multiplayer
                 </button>
               </div>
             </div>

@@ -43,6 +43,8 @@ const SpeakingMock = () => {
   const [userResponses, setUserResponses] = useState({});
   const [conversationHistory, setConversationHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExamListLoading, setIsExamListLoading] = useState(true);
+
 
   // Final result state
   const [finalScore, setFinalScore] = useState(null);
@@ -67,6 +69,7 @@ const SpeakingMock = () => {
   // Fetch speaking exams from GraphQL
   useEffect(() => {
     const fetchAllTCFSpeakings = async () => {
+      setIsExamListLoading(true);
       const query = `
         query GetAllTCFSpeakings {
           tcfSpeakings {
@@ -88,6 +91,8 @@ const SpeakingMock = () => {
         setAllExams(result.data.tcfSpeakings);
       } catch (error) {
         console.error("Error fetching speaking exams:", error);
+      } finally {
+        setIsExamListLoading(false);
       }
     };
     fetchAllTCFSpeakings();
@@ -224,6 +229,10 @@ const SpeakingMock = () => {
       return null;
     }
   };
+
+  if (isExamListLoading) {
+    return <LoadingSpinner />;
+  }
   
   // Start Conversation Screen (before any conversation)
   if (selectedExam && conversationHistory.length === 0) {

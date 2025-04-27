@@ -43,6 +43,7 @@ const ListeningMock = () => {
   // Audio states
   const [audioUrl, setAudioUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isExamListLoading, setIsExamListLoading] = useState(true);
   const [audioError, setAudioError] = useState("");
   const audioRef = useRef(null);
 
@@ -54,6 +55,7 @@ const ListeningMock = () => {
   // -------------------------
   useEffect(() => {
     const fetchExams = async () => {
+      setIsExamListLoading(true);
       try {
         const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
@@ -84,6 +86,8 @@ const ListeningMock = () => {
         }
       } catch (err) {
         console.error("Error fetching listening exams:", err);
+      } finally {
+        setIsExamListLoading(false); 
       }
     };
     fetchExams();
@@ -305,6 +309,11 @@ const ListeningMock = () => {
       element.scrollIntoView({ behavior: "smooth" });
     }
   };
+
+
+  if (isExamListLoading) {
+    return <LoadingSpinner />;
+  }
 
   // -------------------------
   // Exam Selection UI

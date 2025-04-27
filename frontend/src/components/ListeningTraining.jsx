@@ -14,6 +14,7 @@ const ListeningTraining = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isExamListLoading, setIsExamListLoading] = useState(true);
   const [questionData, setQuestionData] = useState(null);
   const [finalScore, setFinalScore] = useState(null);
   const [audioError, setAudioError] = useState("");
@@ -27,6 +28,7 @@ const ListeningTraining = () => {
   // Fetch listening exams via GraphQL
   useEffect(() => {
     const fetchExams = async () => {
+      setIsExamListLoading(true);
       try {
         const res = await fetch(GRAPHQL_ENDPOINT, {
           method: "POST",
@@ -53,6 +55,8 @@ const ListeningTraining = () => {
         setAllExams(result.data.tcfListeningtrainings);
       } catch (error) {
         console.error("Error fetching listening exams:", error);
+      } finally {
+        setIsExamListLoading(false);
       }
     };
     fetchExams();
@@ -171,6 +175,11 @@ const ListeningTraining = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [currentQuestionIndex, mode]);
+
+
+  if (isExamListLoading) {
+    return <LoadingSpinner />;
+  }
 
   // Exam selection screen
   if (!selectedExam) {

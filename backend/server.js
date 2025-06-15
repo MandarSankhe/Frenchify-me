@@ -199,8 +199,11 @@ app.post("/api/speech-to-text", upload.single("file"), async (req, res) => {
     const client = new HfInference(hfApi);
     const audioBuffer = req.file.buffer;
 
+    // Create a Blob with proper content type
+    const audioBlob = new Blob([audioBuffer], { type: req.file.mimetype });
+
     const result = await client.automaticSpeechRecognition({
-      data: audioBuffer,
+      data: audioBlob,
       model: "openai/whisper-large-v3-turbo",
       language: "fr"
     });

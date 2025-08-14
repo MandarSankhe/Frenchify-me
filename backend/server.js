@@ -158,7 +158,7 @@ app.post("/api/initial-question", async (req, res) => {
     }
     // Use MeloTTS via Gradio Client for TTS
     await loadGradioClient();
-    const melottsClient = await Client.connect("reflex-ai/MeloTTS-English-v3");
+    const melottsClient = await Client.connect("neuromod0/MeloTTS-English-v3");
     const speakers = await melottsClient.predict("/load_speakers", {
       language: "FR",
       text: "Bonjour!",
@@ -262,7 +262,7 @@ Fournissez un retour concis en deux lignes maximum, sans mentionner que la répo
     }
     // Placeholder for scoring logic:
     // let updatedScore = computeScore(...);
-    const client = await Client.connect("reflex-ai/MeloTTS-English-v3");
+    const client = await Client.connect("neuromod0/MeloTTS-English-v3");
     const speakers = await client.predict("/load_speakers", {
       language: "FR",
       text: "Bonjour!",
@@ -427,7 +427,7 @@ app.post("/api/listening-question", async (req, res) => {
     const fullText = question.audioText;
     // Use MeloTTS via Gradio Client (reuse similar logic as in /api/initial-question)
     await loadGradioClient();
-    const melottsClient = await Client.connect("reflex-ai/MeloTTS-English-v3");
+    const melottsClient = await Client.connect("neuromod0/MeloTTS-English-v3");
     const speakers = await melottsClient.predict("/load_speakers", {
       language: "FR",
       text: "Bonjour!",
@@ -482,7 +482,7 @@ app.post("/api/mock-listening-question", async (req, res) => {
     const fullText = passage.passageText;
     // Use MeloTTS via Gradio Client (similar to /api/initial-question)
     await loadGradioClient();
-    const melottsClient = await Client.connect("reflex-ai/MeloTTS-English-v3");
+    const melottsClient = await Client.connect("neuromod0/MeloTTS-English-v3");
     const speakers = await melottsClient.predict("/load_speakers", {
       language: "FR",
       text: "Bonjour!",
